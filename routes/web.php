@@ -3,8 +3,12 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TrackingController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -41,9 +45,9 @@ Route::middleware(['auth'])->group(function () {
     //     return view('coming-soon');
     // })->name('customers.index');
 
-    Route::get('/reports', function () {
-        return view('coming-soon');
-    })->name('reports.index');
+    // Route::get('/reports', function () {
+    //     return view('coming-soon');
+    // })->name('reports.index');
 
     Route::get('/forgot-password', function () {
         return view('coming-soon');
@@ -61,6 +65,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/transactions/services', [TransactionController::class, 'getServices'])->name('transactions.services');
     Route::get('/api/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('transactions.today-summary');
     Route::get('/api/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('transactions.recent');
+
+    // Tambahkan di dalam group auth
+    Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index');
+
+    // Tambahkan di dalam group auth
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+
+    // Tambahkan di dalam group auth
+    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+
+    // Tambahkan di dalam group auth
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
 });
 
 // Fallback - redirect to dashboard if authenticated, otherwise to login
