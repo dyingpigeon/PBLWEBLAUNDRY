@@ -12,91 +12,108 @@ class Transaction extends Model
     protected $fillable = [
         'transaction_number',
         'customer_id',
-        'service_id',
+        'service_id', 
         'total_amount',
+        'paid_amount',
+        'change_amount',
         'notes',
+        'customer_notes',
         'status',
+        'payment_status',
+        'payment_method',
+        'timeline',
         'order_date',
         'estimated_completion',
+        'washing_started_at',
+        'ironing_started_at',
         'completed_at',
-        'picked_up_at'
+        'picked_up_at',
+        'cancelled_at',
+        'cancellation_reason',
+        'cancelled_by'
     ];
 
     protected $casts = [
+        'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'change_amount' => 'decimal:2',
         'order_date' => 'datetime',
         'estimated_completion' => 'datetime',
+        'washing_started_at' => 'datetime',
+        'ironing_started_at' => 'datetime',
         'completed_at' => 'datetime',
         'picked_up_at' => 'datetime',
-        'total_amount' => 'decimal:2'
+        'cancelled_at' => 'datetime',
+        'timeline' => 'array'
     ];
 
-    /**
-     * Relationship dengan Customer
-     */
+    // Relationships
     public function customer()
     {
         return $this->belongsTo(Customer::class);
     }
 
-    /**
-     * Relationship dengan Service
-     */
     public function service()
     {
         return $this->belongsTo(Service::class);
     }
 
-    /**
-     * Relationship dengan Transaction Items
-     */
     public function items()
     {
         return $this->hasMany(TransactionItem::class);
     }
 
-    /**
-     * Scope untuk transaksi hari ini
-     */
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    // Scopes
+    public function scopePending($query)
+    {
+        return $query->where('status', 'new');
+    }
+
+    public function scopeInProgress($query)
+    {
+        return $query->whereIn('status', ['washing', 'ironing']);
+    }
+
+    public function scopeReadyForPickup($query)
+    {
+        return $query->where('status', 'ready');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'picked_up');
+    }
+
     public function scopeToday($query)
     {
-        return $query->whereDate('created_at', today());
+        return $query->whereDate('order_date', today());
     }
 
-    /**
-     * Scope untuk status tertentu
-     */
-    public function scopeStatus($query, $status)
+    // Helpers
+    public function getRemainingBalanceAttribute()
     {
-        return $query->where('status', $status);
+        return $this->total_amount - $this->paid_amount;
     }
 
-    /**
-     * Get status color untuk UI
-     */
-    public function getStatusColorAttribute()
+    public function isPaid()
     {
-        return match($this->status) {
-            'pending' => 'bg-yellow-100 text-yellow-800',
-            'processing' => 'bg-blue-100 text-blue-800',
-            'completed' => 'bg-green-100 text-green-800',
-            'picked_up' => 'bg-gray-100 text-gray-800',
-            'cancelled' => 'bg-red-100 text-red-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
+        return $this->payment_status === 'paid' || $this->payment_status === 'overpaid';
     }
 
-    /**
-     * Get status text untuk UI
-     */
-    public function getStatusTextAttribute()
+    public function updateTimeline($status, $completed = true)
     {
-        return match($this->status) {
-            'pending' => 'Menunggu',
-            'processing' => 'Diproses',
-            'completed' => 'Selesai',
-            'picked_up' => 'Sudah Diambil',
-            'cancelled' => 'Dibatalkan',
-            default => 'Unknown'
-        };
+        $timeline = $this->timeline ?? [];
+        $timeline[] = [
+            'status' => $status,
+            'time' => now()->toISOString(),
+            'completed' => $completed
+        ];
+        $this->timeline = $timeline;
+        $this->save();
     }
 }

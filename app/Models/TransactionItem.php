@@ -12,9 +12,11 @@ class TransactionItem extends Model
     protected $fillable = [
         'transaction_id',
         'service_item_id',
+        'item_name',
         'quantity',
         'unit_price',
-        'subtotal'
+        'subtotal',
+        'notes'
     ];
 
     protected $casts = [
@@ -23,17 +25,11 @@ class TransactionItem extends Model
         'subtotal' => 'decimal:2'
     ];
 
-    /**
-     * Relationship dengan Transaction
-     */
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);
     }
 
-    /**
-     * Relationship dengan Service Item
-     */
     public function serviceItem()
     {
         return $this->belongsTo(ServiceItem::class);

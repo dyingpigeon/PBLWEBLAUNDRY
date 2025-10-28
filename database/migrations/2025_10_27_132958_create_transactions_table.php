@@ -6,30 +6,36 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-// database/migrations/xxxx_xx_xx_xxxxxx_create_transactions_table.php
-public function up()
-{
-    Schema::create('transactions', function (Blueprint $table) {
-        $table->id();
-        $table->string('transaction_number')->unique();
-        $table->foreignId('customer_id')->constrained()->onDelete('cascade');
-        $table->foreignId('service_id')->constrained()->onDelete('cascade');
-        $table->decimal('total_amount', 10, 2);
-        $table->text('notes')->nullable();
-        $table->enum('status', ['pending', 'processing', 'completed', 'picked_up'])->default('pending');
-        $table->dateTime('order_date');
-        $table->dateTime('estimated_completion')->nullable();
-        $table->timestamps();
-    });
-}
+    public function up()
+    {
+        Schema::create('transactions', function (Blueprint $table) {
+            $table->id();
+            $table->string('transaction_number')->unique();
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
+            $table->foreignId('service_id')->constrained()->onDelete('cascade');
+            $table->decimal('total_amount', 10, 2);
+            $table->decimal('paid_amount', 10, 2)->default(0);
+            $table->decimal('change_amount', 10, 2)->default(0);
+            $table->text('notes')->nullable();
+            $table->text('customer_notes')->nullable();
+            $table->enum('status', ['new', 'washing', 'ironing', 'ready', 'picked_up', 'cancelled'])->default('new');
+            $table->enum('payment_status', ['pending', 'paid', 'partial', 'overpaid'])->default('pending');
+            $table->enum('payment_method', ['cash', 'transfer', 'qris'])->default('cash');
+            $table->json('timeline')->nullable();
+            $table->dateTime('order_date');
+            $table->dateTime('estimated_completion')->nullable();
+            $table->dateTime('washing_started_at')->nullable();
+            $table->dateTime('ironing_started_at')->nullable();
+            $table->dateTime('completed_at')->nullable();
+            $table->dateTime('picked_up_at')->nullable();
+            $table->dateTime('cancelled_at')->nullable();
+            $table->text('cancellation_reason')->nullable();
+            $table->foreignId('cancelled_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->timestamps();
+        });
+    }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('transactions');
     }
