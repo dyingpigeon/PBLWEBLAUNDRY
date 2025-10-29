@@ -3,23 +3,23 @@
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-screen overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">Tambah Layanan Baru</h3>
-            <button onclick="closeAddServiceModal()" class="p-2 text-gray-400 hover:text-gray-600">
+            <button type="button" onclick="closeAddServiceModal()" class="p-2 text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-lg"></i>
             </button>
         </div>
 
-        <form id="addServiceForm" onsubmit="handleAddService(event)">
+        <form id="addServiceForm">
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama Layanan</label>
-                    <input type="text" id="serviceName" required 
+                    <input type="text" id="serviceName" name="name" required 
                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="Contoh: Cuci Setrika Kilat">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Kategori</label>
-                    <select id="serviceCategory" required 
+                    <select id="serviceCategory" name="category" required 
                             class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">Pilih Kategori</option>
                         <option value="Cuci">Cuci</option>
@@ -32,7 +32,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Icon</label>
-                        <select id="serviceIcon" required 
+                        <select id="serviceIcon" name="icon" required 
                                 class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="fas fa-soap">Soap</option>
                             <option value="fas fa-tshirt">T-Shirt</option>
@@ -43,7 +43,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Warna</label>
-                        <select id="serviceColor" required 
+                        <select id="serviceColor" name="color" required 
                                 class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="blue-500">Biru</option>
                             <option value="green-500">Hijau</option>
@@ -57,17 +57,9 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Item & Harga</label>
                     <div id="priceItems" class="space-y-2">
-                        <div class="flex space-x-2">
-                            <input type="text" placeholder="Nama item" 
-                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500">
-                            <input type="number" placeholder="Harga" 
-                                   class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500">
-                            <button type="button" class="w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
+                        <!-- Dynamic items will be added here -->
                     </div>
-                    <button type="button" class="mt-2 text-blue-500 text-sm font-medium">
+                    <button type="button" onclick="addPriceItem()" class="mt-2 text-blue-500 text-sm font-medium">
                         <i class="fas fa-plus mr-1"></i>Tambah Item
                     </button>
                 </div>
@@ -86,13 +78,3 @@
         </form>
     </div>
 </div>
-
-<script>
-function handleAddService(event) {
-    event.preventDefault();
-    // Handle form submission
-    alert('Layanan berhasil ditambahkan!');
-    closeAddServiceModal();
-    loadServices();
-}
-</script>

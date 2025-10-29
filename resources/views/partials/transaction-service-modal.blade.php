@@ -36,24 +36,95 @@
 </div>
 
 <script>
-// Load services
+// Load services from database
 function loadServices() {
-    const services = getMockServices();
     const container = document.getElementById('servicesGrid');
     
-    container.innerHTML = services.map(service => `
-        <div class="service-card bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-blue-500 cursor-pointer text-center"
-             onclick="selectService(${JSON.stringify(service).replace(/'/g, "\\'")})">
-            <div class="w-16 h-16 ${service.color} rounded-full flex items-center justify-center mx-auto mb-3">
-                <i class="${service.icon} text-white text-xl"></i>
-            </div>
-            <h4 class="font-semibold text-gray-800 mb-1">${service.name}</h4>
-            <p class="text-sm text-gray-500 mb-2">${service.category}</p>
-            <div class="text-xs text-gray-400">
-                ${service.items.length} item
-            </div>
+    // Show loading
+    container.innerHTML = `
+        <div class="col-span-2 text-center py-8">
+            <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+            <p class="text-gray-500 mt-2">Memuat layanan...</p>
         </div>
-    `).join('');
+    `;
+
+    // Fetch data from server
+    fetch('{{ route("transactions.getServices") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const services = data.data;
+            
+            if (services.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-8">
+                        <i class="fas fa-concierge-bell text-gray-400 text-2xl"></i>
+                        <p class="text-gray-500 mt-2">Tidak ada layanan tersedia</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = services.map(service => {
+                const color = getServiceColor(service.name);
+                const icon = getServiceIcon(service.name);
+                
+                return `
+                <div class="service-card bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-blue-500 cursor-pointer text-center"
+                     onclick="selectService(${JSON.stringify(service).replace(/'/g, "\\'")})">
+                    <div class="w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="${icon} text-white text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">${service.name}</h4>
+                    <p class="text-sm text-gray-500 mb-2">${service.description || 'Layanan laundry'}</p>
+                    <div class="text-xs text-gray-400">
+                        ${service.items ? service.items.length : 0} item
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading services:', error);
+        container.innerHTML = `
+            <div class="col-span-2 text-center py-8">
+                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+                <p class="text-red-500 mt-2">Gagal memuat data layanan</p>
+            </div>
+        `;
+    });
+}
+
+// Helper function to determine service color
+function getServiceColor(serviceName) {
+    const colors = {
+        'Cuci Setrika': 'bg-green-500',
+        'Cuci Kering': 'bg-blue-500',
+        'Setrika Saja': 'bg-yellow-500',
+        'Express': 'bg-red-500',
+        'Premium': 'bg-purple-500'
+    };
+    return colors[serviceName] || 'bg-blue-500';
+}
+
+// Helper function to determine service icon
+function getServiceIcon(serviceName) {
+    const icons = {
+        'Cuci Setrika': 'fas fa-tshirt',
+        'Cuci Kering': 'fas fa-wind',
+        'Setrika Saja': 'fas fa-fire',
+        'Express': 'fas fa-bolt',
+        'Premium': 'fas fa-crown'
+    };
+    return icons[serviceName] || 'fas fa-tshirt';
 }
 
 // Select service
@@ -61,18 +132,15 @@ function selectService(service) {
     transactionData.service = service;
     document.getElementById('selectedService').innerHTML = `
         <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 ${service.color} rounded-full flex items-center justify-center">
-                <i class="${service.icon} text-white"></i>
+            <div class="w-10 h-10 ${getServiceColor(service.name)} rounded-full flex items-center justify-center">
+                <i class="${getServiceIcon(service.name)} text-white"></i>
             </div>
             <div>
                 <p class="font-semibold text-gray-800">${service.name}</p>
-                <p class="text-sm text-gray-500">${service.category}</p>
+                <p class="text-sm text-gray-500">${service.description || 'Layanan laundry'}</p>
             </div>
         </div>
     `;
     document.getElementById('selectedServicePreview').classList.remove('hidden');
 }
-
-// Initial load
-loadServices();
 </script>

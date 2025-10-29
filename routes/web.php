@@ -24,63 +24,65 @@ Route::middleware(['guest'])->group(function () {
 
 // Protected routes (require authentication)
 Route::middleware(['auth'])->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Tambahkan di dalam group auth
-    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+    // Customer Routes
+    Route::prefix('customers')->group(function () {
+        Route::get('/', [CustomerController::class, 'index'])->name('customers.index');
+        Route::post('/', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/search', [CustomerController::class, 'search'])->name('customers.search');
+        Route::get('/{id}', [CustomerController::class, 'show'])->name('customers.show');
+        Route::put('/{id}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+    });
 
-    Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
+    // Service Routes
+    Route::prefix('services')->group(function () {
+        Route::get('/', [ServiceController::class, 'index'])->name('services.index');
+        Route::post('/', [ServiceController::class, 'store'])->name('services.store');
+        Route::post('/{id}/toggle', [ServiceController::class, 'toggleService']);
+        Route::put('/{serviceId}/items/{itemId}', [ServiceController::class, 'updateServiceItem']);
+    });
+
+    // Transaction Routes
+    Route::prefix('transactions')->group(function () {
+        Route::get('/', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/create', [TransactionController::class, 'create'])->name('transactions.create');
+        Route::post('/', [TransactionController::class, 'store'])->name('transactions.store');
+        Route::get('/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
+        Route::put('/{transaction}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
+        Route::get('/{transaction}/receipt', [TransactionController::class, 'printReceipt'])->name('transactions.receipt');
+        Route::post('/customers', [TransactionController::class, 'getCustomers'])->name('transactions.getCustomers');
+        Route::post('/services', [TransactionController::class, 'getServices'])->name('transactions.getServices');
+    });
+
+    // API Routes untuk data
+    Route::prefix('api')->group(function () {
+        Route::get('/top-customers', [CustomerController::class, 'getTopCustomers'])->name('customers.top');
+        Route::get('/transactions/customers', [TransactionController::class, 'getCustomers'])->name('transactions.customers');
+        Route::get('/transactions/services', [TransactionController::class, 'getServices'])->name('transactions.services');
+        Route::get('/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('transactions.today-summary');
+        Route::get('/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('transactions.recent');
+    });
+
+    // Other Routes
+    Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::post('/transactions', [TransactionController::class, 'logout'])->name('logout');
 
     // Temporary routes (coming soon)
-    Route::get('/transactions', function () {
-        return view('coming-soon');
-    })->name('transactions.index');
-
-    // Route::get('/customers', function () {
-    //     return view('coming-soon');
-    // })->name('customers.index');
-
-    // Route::get('/reports', function () {
-    //     return view('coming-soon');
-    // })->name('reports.index');
-
     Route::get('/forgot-password', function () {
         return view('coming-soon');
     })->name('password.request');
-
-
-    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-    Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
-    Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
-    Route::put('/transactions/{transaction}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
-    Route::get('/transactions/{transaction}/receipt', [TransactionController::class, 'printReceipt'])->name('transactions.receipt');
-
-    // API Routes untuk data
-    Route::get('/api/transactions/customers', [TransactionController::class, 'getCustomers'])->name('transactions.customers');
-    Route::get('/api/transactions/services', [TransactionController::class, 'getServices'])->name('transactions.services');
-    Route::get('/api/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('transactions.today-summary');
-    Route::get('/api/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('transactions.recent');
-
-    // Tambahkan di dalam group auth
-    Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index');
-
-    // Tambahkan di dalam group auth
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-
-    // Tambahkan di dalam group auth
-    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
-
-    // Tambahkan di dalam group auth
-    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-
 });
 
 // Fallback - redirect to dashboard if authenticated, otherwise to login
-Route::get('/', function () {
+Route::fallback(function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });

@@ -9,20 +9,24 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-// database/migrations/xxxx_xx_xx_xxxxxx_create_service_items_table.php
-public function up()
-{
-    Schema::create('service_items', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('service_id')->constrained()->onDelete('cascade');
-        $table->string('name');
-        $table->decimal('price', 10, 2);
-        $table->string('unit')->default('kg');
-        $table->text('description')->nullable();
-        $table->boolean('active')->default(true);
-        $table->timestamps();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('service_items', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('service_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->decimal('price', 10, 2);
+            $table->string('unit')->default('kg');
+            $table->text('description')->nullable();
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+            
+            // Indexes
+            $table->index('service_id');
+            $table->index('active');
+            $table->index(['service_id', 'active']);
+        });
+    }
 
     /**
      * Reverse the migrations.

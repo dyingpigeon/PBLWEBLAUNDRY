@@ -5,11 +5,11 @@
             <p class="text-xs text-gray-500">Admin Dashboard</p>
         </div>
         <div class="flex items-center space-x-3">
-            <!-- Notifications with Badge Counter -->
+            <!-- Notifications -->
             <a href="{{ route('notifications.index') }}" 
                class="relative p-2 text-gray-600 hover:text-gray-800 transition-colors {{ request()->routeIs('notifications.*') ? 'text-blue-600' : '' }}">
                 <i class="fas fa-bell text-lg"></i>
-                <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full notification-badge"></span>
+                <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
             </a>
             
             <!-- Settings -->
