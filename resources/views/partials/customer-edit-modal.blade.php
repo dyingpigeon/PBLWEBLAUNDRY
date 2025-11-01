@@ -8,48 +8,53 @@
             </button>
         </div>
 
-        <form onsubmit="handleEditCustomer(event)">
-            <input type="hidden" id="editCustomerId">
+        <form id="editCustomerForm" method="POST">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="id" id="editCustomerId">
             
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
-                    <input type="text" id="editCustomerName" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" name="name" id="editCustomerName" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Telepon</label>
-                    <input type="tel" id="editCustomerPhone" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="tel" name="phone" id="editCustomerPhone" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" name="email" id="editCustomerEmail" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Alamat</label>
-                    <textarea id="editCustomerAddress" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    <textarea name="address" id="editCustomerAddress" rows="3" 
+                              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
+                    <textarea name="notes" id="editCustomerNotes" rows="2" 
+                              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
                 </div>
             </div>
 
             <div class="flex space-x-3 mt-6">
-                <button type="button" onclick="closeEditCustomerModal()" class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold">Batal</button>
-                <button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-semibold">Update</button>
+                <button type="button" onclick="closeEditCustomerModal()" 
+                        class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors">
+                    Batal
+                </button>
+                <button type="submit" 
+                        class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">
+                    Update Pelanggan
+                </button>
             </div>
         </form>
     </div>
 </div>
-
-<script>
-function handleEditCustomer(event) {
-    event.preventDefault();
-    
-    const formData = {
-        id: document.getElementById('editCustomerId').value,
-        name: document.getElementById('editCustomerName').value,
-        phone: document.getElementById('editCustomerPhone').value,
-        address: document.getElementById('editCustomerAddress').value,
-    };
-
-    console.log('Updating customer:', formData);
-    alert('Data pelanggan berhasil diupdate!');
-    closeEditCustomerModal();
-    refreshCustomers();
-}
-</script>

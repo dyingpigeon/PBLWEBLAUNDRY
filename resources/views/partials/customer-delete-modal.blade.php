@@ -6,35 +6,30 @@
                 <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
             </div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2">Hapus Pelanggan?</h3>
-            <p class="text-gray-600">Data pelanggan akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</p>
+            <p class="text-gray-600 mb-2">Anda akan menghapus pelanggan:</p>
+            <p class="font-semibold text-red-600 mb-3" id="deleteCustomerName"></p>
+            <p class="text-sm text-gray-500">Data akan dihapus permanen dan tidak dapat dikembalikan.</p>
         </div>
 
-        <input type="hidden" id="deleteCustomerId">
+        <form id="deleteCustomerForm" method="POST">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="id" id="deleteCustomerId">
+        </form>
         
         <div class="flex space-x-3">
             <button 
                 onclick="closeDeleteModal()"
-                class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50"
+                class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
             >
                 Batal
             </button>
             <button 
-                onclick="confirmDelete()"
-                class="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600"
+                onclick="submitDeleteForm()"
+                class="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors"
             >
-                Hapus
+                Ya, Hapus
             </button>
         </div>
     </div>
 </div>
-
-<script>
-function confirmDelete() {
-    const customerId = document.getElementById('deleteCustomerId').value;
-    
-    console.log('Deleting customer:', customerId);
-    alert('Pelanggan berhasil dihapus!');
-    closeDeleteModal();
-    refreshCustomers();
-}
-</script>

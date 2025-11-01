@@ -86,3 +86,16 @@ Route::middleware(['auth'])->group(function () {
 Route::fallback(function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
+
+// routes/web.php
+Route::get('/js/{file}', function ($file) {
+    $path = resource_path('js/' . $file);
+    
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'application/javascript',
+    ]);
+})->where('file', '.*\.js$');
