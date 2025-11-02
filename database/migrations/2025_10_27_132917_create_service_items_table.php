@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -14,17 +13,15 @@ return new class extends Migration
         Schema::create('service_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->decimal('price', 10, 2);
-            $table->string('unit')->default('kg');
+            $table->foreignId('category_id')->nullable()->constrained('service_categories')->onDelete('cascade');
+            $table->string('name'); // Baju, Celana, Jaket, Jas, Sepatu, Boneka, dll
+            $table->decimal('price', 12, 2);
+            $table->string('unit')->default('kg'); // kg, pcs, set, dll
+            $table->integer('estimation_time')->default(24); // estimasi jam
             $table->text('description')->nullable();
+            $table->json('options')->nullable(); // untuk variasi (warna, ukuran, dll)
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
-            // Indexes
-            $table->index('service_id');
-            $table->index('active');
-            $table->index(['service_id', 'active']);
         });
     }
 

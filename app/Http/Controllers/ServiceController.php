@@ -179,4 +179,150 @@ class ServiceController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Harga berhasil diupdate']);
     }
+
+    // FITUR BARU: Menambah item ke service yang sudah ada
+    public function addServiceItem(Request $request, $serviceId)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'unit' => 'sometimes|string|max:20',
+            'description' => 'sometimes|string|max:500'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Cek apakah service exists dan aktif
+            $serviceCheckQuery = "SELECT id FROM services WHERE id = ? AND active = 1";
+            $service = DB::select($serviceCheckQuery, [$serviceId]);
+
+            if (empty($service)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Service tidak ditemukan atau tidak aktif'
+                ], 404);
+            }
+
+            // Cek apakah item dengan nama yang sama sudah ada di service ini
+            $duplicateCheckQuery = "SELECT id FROM service_items WHERE service_id = ? AND name = ? AND active = 1";
+            $existingItem = DB::select($duplicateCheckQuery, [
+                $serviceId,
+                $validated['name']
+            ]);
+
+            if (!empty($existingItem)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Item dengan nama yang sama sudah ada dalam service ini'
+                ], 422);
+            }
+
+            // Insert new service item
+            $itemQuery = "
+                INSERT INTO service_items (service_id, name, price, unit, description, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+            ";
+
+            DB::insert($itemQuery, [
+                $serviceId,
+                $validated['name'],
+                $validated['price'],
+                $validated['unit'] ?? 'kg',
+                $validated['description'] ?? null
+            ]);
+
+            $itemId = DB::getPdo()->lastInsertId();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item berhasil ditambahkan ke service',
+                'item_id' => $itemId
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan item: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // FITUR BARU: Menghapus item individual (soft delete)
+    public function deleteServiceItem(Request $request, $serviceId, $itemId)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Cek apakah service item exists dan milik service yang benar
+            $checkQuery = "SELECT id FROM service_items WHERE id = ? AND service_id = ? AND active = 1";
+            $item = DB::select($checkQuery, [$itemId, $serviceId]);
+
+            if (empty($item)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Item service tidak ditemukan'
+                ], 404);
+            }
+
+            // Soft delete: set active = 0
+            $deleteQuery = "UPDATE service_items SET active = 0, updated_at = NOW() WHERE id = ?";
+            $affected = DB::update($deleteQuery, [$itemId]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus item: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // FITUR BARU: Get detail service dengan items (untuk edit form)
+    public function getServiceWithItems($serviceId)
+    {
+        try {
+            // Get service details
+            $serviceQuery = "SELECT * FROM services WHERE id = ? AND active = 1";
+            $service = DB::select($serviceQuery, [$serviceId]);
+
+            if (empty($service)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Service tidak ditemukan'
+                ], 404);
+            }
+
+            // Get service items
+            $itemsQuery = "
+                SELECT id, name, price, unit, description 
+                FROM service_items 
+                WHERE service_id = ? AND active = 1 
+                ORDER BY name
+            ";
+            $items = DB::select($itemsQuery, [$serviceId]);
+
+            return response()->json([
+                'success' => true,
+                'service' => $service[0],
+                'items' => $items
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data service: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -19,9 +19,10 @@
             </a>
             
             <!-- User Profile -->
-            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:bg-blue-600 transition-colors">
-                A
-            </div>
+            <a href="{{ route('profile.index') }}" 
+               class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:bg-blue-600 transition-colors {{ request()->routeIs('profile.*') ? 'ring-2 ring-blue-300' : '' }}">
+                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+            </a>
         </div>
     </div>
 </header>
