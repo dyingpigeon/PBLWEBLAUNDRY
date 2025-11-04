@@ -47,3 +47,4 @@ php artisan serve --host=0.0.0.0 --port=8000\n\
 
 # Jalankan dengan startup script
 CMD ["/start.sh"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
