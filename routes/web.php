@@ -187,3 +187,39 @@ Route::get('/js/{file}', function ($file) {
         'Content-Type' => 'application/javascript',
     ]);
 })->where('file', '.*\.js$');
+
+
+
+// Route untuk download backup file
+Route::get('/backup/download/{filename}', function ($filename) {
+    $filePath = 'backups/' . $filename;
+
+    if (Storage::exists($filePath)) {
+        return Storage::download($filePath);
+    }
+
+    return response()->json(['error' => 'File not found'], 404);
+})->name('backup.download');
+
+// Route untuk cek semua file backup
+Route::get('/backup/files', function () {
+    $files = Storage::files('backups');
+    $fileInfo = [];
+
+    foreach ($files as $file) {
+        $fileInfo[] = [
+            'name' => basename($file),
+            'path' => $file,
+            'size' => Storage::size($file) . ' bytes',
+            'last_modified' => date('Y-m-d H:i:s', Storage::lastModified($file)),
+            'download_url' => route('backup.download', ['filename' => basename($file)])
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'files' => $fileInfo,
+        'total_files' => count($files),
+        'storage_path' => storage_path('app/backups')
+    ]);
+});

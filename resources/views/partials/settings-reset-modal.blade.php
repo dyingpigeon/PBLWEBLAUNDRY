@@ -6,18 +6,20 @@
                 <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
             </div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2">Reset Data</h3>
-            <p class="text-gray-600 mb-2">Anda akan menghapus semua data:</p>
-            <ul class="text-sm text-gray-500 text-left space-y-1 mb-4">
-                <li>• Semua transaksi dan pesanan</li>
-                <li>• Data pelanggan</li>
-                <li>• Riwayat laporan</li>
+            <p class="text-gray-600 mb-2">🚨 TINDAKAN SANGAT BERBAHAYA 🚨</p>
+            <ul class="text-sm text-red-500 text-left space-y-1 mb-4">
+                <li>• Semua transaksi akan dihapus permanen</li>
+                <li>• Semua pesanan akan dihapus permanen</li>
+                <li>• Semua data pelanggan akan dihapus permanen</li>
+                <li>• Data pengaturan (settings) TIDAK akan terpengaruh</li>
             </ul>
-            <p class="text-red-500 font-medium">Tindakan ini tidak dapat dibatalkan!</p>
+            <p class="text-red-500 font-medium">Tindakan ini TIDAK DAPAT DIBATALKAN!</p>
+            <p class="text-xs text-gray-500 mt-2">Backup otomatis akan dibuat sebelum reset</p>
         </div>
 
         <div class="space-y-3">
-            <button class="w-full bg-red-500 text-white py-3 rounded-xl font-semibold">
-                Ya, Hapus Semua Data
+            <button onclick="confirmReset()" class="w-full bg-red-500 text-white py-3 rounded-xl font-semibold">
+                <i class="fas fa-trash-alt mr-2"></i>Ya, Hapus Semua Data
             </button>
             <button onclick="closeModal('resetModal')" class="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold">
                 Batalkan

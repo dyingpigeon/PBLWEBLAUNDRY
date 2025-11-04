@@ -2,6 +2,7 @@
 class SettingsApp {
     constructor() {
         console.log("🚀 SettingsApp constructor called");
+        this.isDownloading = false; // Flag untuk cegah double download
         this.init();
     }
 
@@ -12,8 +13,7 @@ class SettingsApp {
         this.loadReceiptSettings();
         this.loadNotificationSettings();
         this.attachEventListeners();
-        this.attachReceiptEventListeners(); // Tambahkan ini
-        this.attachHoursEventListeners();
+        this.attachReceiptEventListeners();
         this.attachHoursEventListeners();
         console.log("✅ SettingsApp init completed");
     }
@@ -427,8 +427,7 @@ class SettingsApp {
         }
     }
 
-    // Receipt Settings - TAMBAHKAN METHOD INI DI DALAM CLASS
-    // Update receipt preview
+    // Receipt Settings
     updateReceiptPreview() {
         console.log("📝 updateReceiptPreview called");
         const preview = document.getElementById("receiptPreview");
@@ -744,11 +743,9 @@ class SettingsApp {
     }
 
     // Backup Functionality
-    // Backup Functionality - IMPROVED
     async performBackup() {
         console.log("💾 performBackup called");
 
-        // PERBAIKAN: Hapus backupType selection, gunakan default "full"
         const backupType = "full";
         const button = document.querySelector(
             "#backupModal button:first-child"
@@ -779,9 +776,24 @@ class SettingsApp {
             console.log("📥 Backup response:", result);
 
             if (result.success) {
+                // Auto download file backup
+                this.autoDownloadBackup(result.download_url, result.filename);
+
+                // Tampilkan notifikasi sukses
                 this.showNotification(
-                    `Backup berhasil! File: ${result.filename} (${result.record_count} records)`
+                    `Backup berhasil! File "${result.filename}" sedang didownload...`
                 );
+
+                // Log detail file ke console
+                console.log("📁 Backup Details:", {
+                    filename: result.filename,
+                    record_count: result.record_count,
+                    file_size: result.file_size + " MB",
+                    tables: result.tables_backed_up,
+                    download_url: result.download_url,
+                    full_path: result.full_path,
+                });
+
                 this.closeModal("backupModal");
             } else {
                 this.showNotification(
@@ -797,18 +809,53 @@ class SettingsApp {
         }
     }
 
-    // Reset Data Functionality
+    // Method untuk auto download file - FIXED (no double download)
+    autoDownloadBackup(downloadUrl, filename) {
+        console.log(`⬇️ Auto downloading backup: ${filename}`);
+        
+        // Cegah double download
+        if (this.isDownloading) {
+            console.log('⏸️ Download already in progress, skipping');
+            return;
+        }
+        
+        this.isDownloading = true;
+
+        try {
+            // Method sederhana - create link dan click
+            const downloadLink = document.createElement("a");
+            downloadLink.href = downloadUrl;
+            downloadLink.download = filename;
+            downloadLink.style.display = "none";
+
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            console.log("✅ Auto download completed");
+        } catch (error) {
+            console.error('❌ Download error:', error);
+        } finally {
+            // Reset flag setelah 1 detik
+            setTimeout(() => {
+                this.isDownloading = false;
+                console.log('🔄 Download flag reset');
+            }, 1000);
+        }
+    }
+
+    // Reset Data Functionality - IMPROVED WITH BETTER ERROR HANDLING
     async confirmReset() {
         console.log("💾 confirmReset called");
-        const confirmation = prompt(
-            'Ketik "HAPUS-SEMUA-DATA" untuk mengonfirmasi penghapusan semua data:'
-        );
+        
+        // Konfirmasi tambahan dengan warning
+        const warningMessage = `🚨 PERINGATAN TINGGI 🚨\n\nAnda akan menghapus SEMUA DATA:\n• Semua transaksi\n• Semua pesanan\n• Semua data pelanggan\n\nTindakan ini TIDAK DAPAT DIBATALKAN!\n\nKetik "HAPUS-SEMUA-DATA" untuk konfirmasi:`;
+        
+        const confirmation = prompt(warningMessage);
         console.log("📝 Reset confirmation input:", confirmation);
 
         if (confirmation === "HAPUS-SEMUA-DATA") {
-            const button = document.querySelector(
-                "#resetModal button:first-child"
-            );
+            const button = document.querySelector("#resetModal button:first-child");
             if (!button) {
                 console.error("❌ Reset button not found");
                 return;
@@ -822,9 +869,7 @@ class SettingsApp {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": document
-                            .querySelector('meta[name="csrf-token"]')
-                            .getAttribute("content"),
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
                     },
                     body: JSON.stringify({ confirmation: confirmation }),
                 });
@@ -833,80 +878,28 @@ class SettingsApp {
                 console.log("📥 Reset response:", result);
 
                 if (result.success) {
-                    this.showNotification("Semua data berhasil direset");
+                    const message = `✅ Data berhasil direset!\n\n• Tables: ${result.tables_reset?.join(', ') || 'Tidak ada data yang direset'}\n• Records: ${result.records_reset || 0}\n• Backup: ${result.backup_file || 'Tersimpan'}`;
+                    
+                    this.showNotification(message);
                     this.closeModal("resetModal");
+                    
+                    // Refresh halaman setelah 3 detik
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
                 } else {
-                    this.showNotification(
-                        result.message || "Gagal mereset data",
-                        "error"
-                    );
+                    this.showNotification(result.message || "Gagal mereset data", "error");
                 }
             } catch (error) {
                 console.error("❌ Error resetting data:", error);
-                this.showNotification(
-                    "Terjadi kesalahan saat reset data",
-                    "error"
-                );
+                this.showNotification("Terjadi kesalahan saat reset data", "error");
             } finally {
                 this.hideLoading(button, originalText);
             }
         } else {
             console.log("❌ Reset confirmation failed - invalid input");
-            this.showNotification(
-                "Konfirmasi tidak valid. Data tidak direset.",
-                "error"
-            );
+            this.showNotification("Reset dibatalkan. Konfirmasi tidak valid.", "warning");
         }
-    }
-
-    // Enable/disable time inputs based on closed checkbox
-    toggleTimeInputs(day) {
-        const closedCheckbox = document.getElementById(`${day}Closed`);
-        const openInput = document.getElementById(`${day}Open`);
-        const closeInput = document.getElementById(`${day}Close`);
-
-        if (closedCheckbox && openInput && closeInput) {
-            const isClosed = closedCheckbox.checked;
-            openInput.disabled = isClosed;
-            closeInput.disabled = isClosed;
-
-            if (isClosed) {
-                openInput.classList.add("opacity-50", "cursor-not-allowed");
-                closeInput.classList.add("opacity-50", "cursor-not-allowed");
-            } else {
-                openInput.classList.remove("opacity-50", "cursor-not-allowed");
-                closeInput.classList.remove("opacity-50", "cursor-not-allowed");
-            }
-        }
-    }
-
-    // Attach event listeners untuk business hours
-    attachHoursEventListeners() {
-        console.log("🔧 attachHoursEventListeners called");
-
-        const days = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ];
-
-        days.forEach((day) => {
-            const closedCheckbox = document.getElementById(`${day}Closed`);
-            if (closedCheckbox) {
-                closedCheckbox.addEventListener("change", () => {
-                    this.toggleTimeInputs(day);
-                });
-
-                // Set initial state
-                this.toggleTimeInputs(day);
-            }
-        });
-
-        console.log("✅ Hours event listeners attached");
     }
 
     // Enable/disable time inputs based on closed checkbox

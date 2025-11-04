@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Setting;
+use PDO;
 
 class SettingController extends Controller
 {
@@ -483,13 +484,22 @@ class SettingController extends Controller
                     'updated_at' => now()
                 ]);
 
+                // PERBAIKAN: Return informasi file path yang lengkap
+                $fullPath = storage_path('app/' . $filePath);
+                $downloadUrl = route('backup.download', ['filename' => $filename]);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Backup berhasil dilakukan',
                     'filename' => $filename,
                     'record_count' => $recordCount,
                     'file_size' => round($fileSize, 2),
-                    'backup_type' => $backupType
+                    'backup_type' => $backupType,
+                    'file_path' => $filePath,
+                    'full_path' => $fullPath,
+                    'download_url' => $downloadUrl,
+                    'tables_backed_up' => $tablesToBackup ?? [$backupType],
+                    'storage_disk' => config('filesystems.default')
                 ]);
             } else {
                 return response()->json([
@@ -540,32 +550,110 @@ class SettingController extends Controller
     }
 
     // Reset data (dangerous operation)
+    // Reset data - IMPROVED VERSION
+    // Reset data - FIXED VERSION (tanpa transaction)
     public function resetData(Request $request)
     {
         $confirmation = $request->input('confirmation');
 
         if ($confirmation !== 'HAPUS-SEMUA-DATA') {
-            return response()->json(['success' => false, 'message' => 'Konfirmasi tidak valid'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Konfirmasi tidak valid'
+            ], 400);
         }
 
         try {
-            DB::beginTransaction();
+            // Buat backup otomatis sebelum reset
+            $backupFilename = 'pre_reset_backup_' . date('Y-m-d_H-i-s') . '.csv';
+            $backupPath = 'backups/' . $backupFilename;
 
-            // Reset transactions, orders, customers (adjust based on your actual tables)
-            DB::statement("DELETE FROM transactions");
-            DB::statement("DELETE FROM orders");
-            DB::statement("DELETE FROM customers");
-            DB::statement("ALTER TABLE transactions AUTO_INCREMENT = 1");
-            DB::statement("ALTER TABLE orders AUTO_INCREMENT = 1");
-            DB::statement("ALTER TABLE customers AUTO_INCREMENT = 1");
+            // Backup data yang akan direset
+            $tablesToReset = [];
+            $backupData = [];
 
-            DB::commit();
+            // Cek dan backup table yang ada
+            if (Schema::hasTable('customers')) {
+                $customers = DB::select("SELECT * FROM customers");
+                $tablesToReset[] = 'customers';
+                $backupData['customers'] = $customers;
+            }
 
-            return response()->json(['success' => true, 'message' => 'Semua data berhasil direset']);
+            if (Schema::hasTable('orders')) {
+                $orders = DB::select("SELECT * FROM orders");
+                $tablesToReset[] = 'orders';
+                $backupData['orders'] = $orders;
+            }
+
+            if (Schema::hasTable('transactions')) {
+                $transactions = DB::select("SELECT * FROM transactions");
+                $tablesToReset[] = 'transactions';
+                $backupData['transactions'] = $transactions;
+            }
+
+            // Simpan backup
+            if (!empty($backupData)) {
+                $csvData = $this->multiTableToCsv($backupData);
+                Storage::put($backupPath, $csvData);
+            }
+
+            // Reset hanya table yang ada (TANPA TRANSACTION)
+            $resetTables = [];
+            $resetCount = 0;
+
+            if (in_array('transactions', $tablesToReset)) {
+                $countBefore = DB::select("SELECT COUNT(*) as count FROM transactions")[0]->count;
+                DB::statement("DELETE FROM transactions");
+                if (DB::getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                    DB::statement("ALTER TABLE transactions AUTO_INCREMENT = 1");
+                }
+                $resetTables[] = 'transactions';
+                $resetCount += $countBefore;
+            }
+
+            if (in_array('orders', $tablesToReset)) {
+                $countBefore = DB::select("SELECT COUNT(*) as count FROM orders")[0]->count;
+                DB::statement("DELETE FROM orders");
+                if (DB::getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                    DB::statement("ALTER TABLE orders AUTO_INCREMENT = 1");
+                }
+                $resetTables[] = 'orders';
+                $resetCount += $countBefore;
+            }
+
+            if (in_array('customers', $tablesToReset)) {
+                $countBefore = DB::select("SELECT COUNT(*) as count FROM customers")[0]->count;
+                DB::statement("DELETE FROM customers");
+                if (DB::getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                    DB::statement("ALTER TABLE customers AUTO_INCREMENT = 1");
+                }
+                $resetTables[] = 'customers';
+                $resetCount += $countBefore;
+            }
+
+            // Log reset activity
+            \Log::info('Data reset performed', [
+                'tables_reset' => $resetTables,
+                'backup_file' => $backupFilename,
+                'user_id' => auth()->id(),
+                'reset_count' => $resetCount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data berhasil direset',
+                'tables_reset' => $resetTables,
+                'backup_file' => $backupFilename,
+                'records_reset' => $resetCount
+            ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal mereset data: ' . $e->getMessage()], 500);
+            \Log::error('Reset data error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mereset data: ' . $e->getMessage()
+            ], 500);
         }
     }
 
