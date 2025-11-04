@@ -24,7 +24,7 @@
 # Gunakan image PHP dengan FPM
 FROM php:8.4-fpm
 
-# Install dependencies sistem yang dibutuhkan Laravel
+# Install dependencies sistem yang dibutuhkan Larave
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
