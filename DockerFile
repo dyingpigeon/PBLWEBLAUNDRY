@@ -86,11 +86,11 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # FORCE MySQL configuration dengan environment variables
 ENV DB_CONNECTION=mysql
-ENV DB_HOST=mysql-production-df57.up.railway.app
+ENV DB_HOST=mysql-production-dc37.up.railway.app
 ENV DB_PORT=3306
 ENV DB_DATABASE=railway
 ENV DB_USERNAME=root
-ENV DB_PASSWORD=ktgITtjjPYEQAaUpPxxEiwPvLUTKXTNy
+ENV DB_PASSWORD=zwcKupRiNpggKSfDRWEZKgtPQuyzyFVz
 
 # Force session dan cache menggunakan file (bukan sqlite)
 ENV SESSION_DRIVER=file
@@ -109,7 +109,7 @@ RUN php artisan config:clear && \
     php artisan view:clear
 
 # Jalankan migration (tambahkan --force untuk production)
-RUN php artisan migrate --force
+RUN php artisan migrate --seed
 
 # Cache config dan route untuk production
 RUN php artisan config:cache && \
