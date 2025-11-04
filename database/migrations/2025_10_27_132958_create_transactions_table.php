@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
             $table->decimal('total_amount', 10, 2);
             $table->decimal('paid_amount', 10, 2)->default(0);
+            $table->decimal('change_amount', 10, 2)->default(0);
             $table->decimal('weight', 8, 2)->nullable(); // TAMBAH: untuk kiloan
             $table->enum('payment_type', ['now', 'later'])->default('later'); // TAMBAH: bayar sekarang/nanti
             $table->enum('status', ['new', 'process', 'ready', 'done', 'cancelled'])->default('new');

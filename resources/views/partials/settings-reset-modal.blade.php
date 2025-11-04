@@ -16,10 +16,10 @@
         </div>
 
         <div class="space-y-3">
-            <button onclick="confirmReset()" class="w-full bg-red-500 text-white py-3 rounded-xl font-semibold">
+            <button class="w-full bg-red-500 text-white py-3 rounded-xl font-semibold">
                 Ya, Hapus Semua Data
             </button>
-            <button onclick="closeResetModal()" class="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold">
+            <button onclick="closeModal('resetModal')" class="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold">
                 Batalkan
             </button>
         </div>

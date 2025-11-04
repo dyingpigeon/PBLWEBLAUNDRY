@@ -1,3 +1,4 @@
+<!-- transaction-review-modal.blade.php -->
 <!-- Review Modal -->
 <div id="reviewModal" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden">
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-screen overflow-hidden flex flex-col">
@@ -26,7 +27,7 @@
                 <div id="reviewCustomer"></div>
             </div>
 
-            <!-- Service -->
+            <!-- Service & Type -->
             <div>
                 <h4 class="font-semibold text-gray-700 mb-2">Layanan</h4>
                 <div id="reviewService"></div>
@@ -34,7 +35,7 @@
 
             <!-- Items -->
             <div>
-                <h4 class="font-semibold text-gray-700 mb-2">Items</h4>
+                <h4 class="font-semibold text-gray-700 mb-2" id="reviewItemsTitle">Items</h4>
                 <div id="reviewItems" class="bg-gray-50 rounded-xl p-3">
                     <!-- Items will be loaded here -->
                 </div>
@@ -62,10 +63,67 @@
 </div>
 
 <script>
-// Update notes in review
+// Update review summary untuk handle kedua tipe
 function updateReviewSummary() {
-    // ... existing code ...
+    // Update customer
+    document.getElementById('reviewCustomer').innerHTML = `
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-white"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-800">${transactionData.customer.name}</p>
+                <p class="text-sm text-gray-500">${transactionData.customer.phone || 'No telepon'}</p>
+            </div>
+        </div>
+    `;
+
+    // Update service & type
+    const typeBadge = transactionData.order_type === 'kiloan' ? 
+        '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">Kiloan</span>' :
+        '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">Satuan</span>';
     
+    document.getElementById('reviewService').innerHTML = `
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <i class="fas fa-tshirt text-white"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-800">${transactionData.service.name} ${typeBadge}</p>
+                <p class="text-sm text-gray-500">${transactionData.service.description || 'Layanan laundry'}</p>
+            </div>
+        </div>
+    `;
+
+    // Update items
+    const itemsContainer = document.getElementById('reviewItems');
+    const itemsTitle = document.getElementById('reviewItemsTitle');
+    
+    if (transactionData.order_type === 'kiloan') {
+        itemsTitle.textContent = 'Detail Kiloan';
+        itemsContainer.innerHTML = `
+            <div class="flex justify-between items-center">
+                <span class="text-gray-600">Berat:</span>
+                <span class="font-semibold">${transactionData.weight} kg</span>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+                <span class="text-gray-600">Harga per kg:</span>
+                <span class="font-semibold">Rp ${formatPrice(transactionData.service_item.price)}</span>
+            </div>
+        `;
+    } else {
+        itemsTitle.textContent = 'Items Satuan';
+        itemsContainer.innerHTML = transactionData.items.map(item => `
+            <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
+                <div>
+                    <p class="font-semibold text-gray-800">${item.item_name}</p>
+                    <p class="text-sm text-gray-500">${item.quantity} ${item.unit} × Rp ${formatPrice(item.unit_price)}</p>
+                </div>
+                <span class="font-semibold">Rp ${formatPrice(item.subtotal)}</span>
+            </div>
+        `).join('');
+    }
+
     // Update notes
     if (transactionData.notes) {
         document.getElementById('reviewNotesSection').classList.remove('hidden');
@@ -73,5 +131,8 @@ function updateReviewSummary() {
     } else {
         document.getElementById('reviewNotesSection').classList.add('hidden');
     }
+
+    // Update total
+    document.getElementById('reviewTotal').textContent = `Rp ${formatPrice(transactionData.total)}`;
 }
 </script>

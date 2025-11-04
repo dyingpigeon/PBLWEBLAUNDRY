@@ -5,20 +5,25 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
-
     public function index()
     {
-        return view('reports.index'); // Sesuaikan dengan nama view Anda
+        Log::debug('ReportController@index: Memulai proses menampilkan halaman reports');
+        Log::debug('ReportController@index: Mengembalikan view reports.index');
+        return view('reports.index');
     }
+
     /**
      * Get financial report summary
      */
     public function getFinancialSummary(Request $request)
     {
-        // Gunakan input() method untuk mengakses request data
+        Log::debug('ReportController@getFinancialSummary: Memulai proses mengambil summary keuangan');
+        Log::debug('ReportController@getFinancialSummary: Request parameters', $request->all());
+
         $validator = Validator::make($request->all(), [
             'period' => 'required|in:week,month,quarter,year,custom',
             'start_date' => 'required_if:period,custom|date',
@@ -26,6 +31,10 @@ class ReportController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('ReportController@getFinancialSummary: Validasi gagal', [
+                'errors' => $validator->errors()->toArray(),
+                'input_data' => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
@@ -33,15 +42,22 @@ class ReportController extends Controller
             ], 422);
         }
 
-        // PERBAIKAN: Gunakan input() method
         $period = $request->input('period');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
+        Log::debug('ReportController@getFinancialSummary: Parameter yang diterima', [
+            'period' => $period,
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
         $dateRange = $this->getDateRange($period, $startDate, $endDate);
+        Log::debug('ReportController@getFinancialSummary: Date range yang dihasilkan', $dateRange);
 
         try {
             // Get total income and orders
+            Log::debug('ReportController@getFinancialSummary: Menjalankan query summary');
             $summaryQuery = "
                 SELECT 
                     COUNT(*) as total_orders,
@@ -54,8 +70,14 @@ class ReportController extends Controller
             ";
 
             $summary = DB::select($summaryQuery, [$dateRange['start'], $dateRange['end']])[0];
+            Log::debug('ReportController@getFinancialSummary: Hasil query summary', [
+                'total_orders' => $summary->total_orders,
+                'total_income' => $summary->total_income,
+                'total_customers' => $summary->total_customers
+            ]);
 
             // Get daily revenue for chart
+            Log::debug('ReportController@getFinancialSummary: Menjalankan query revenue chart');
             $revenueChartQuery = "
                 SELECT 
                     DATE(created_at) as date,
@@ -70,8 +92,12 @@ class ReportController extends Controller
             ";
 
             $revenueData = DB::select($revenueChartQuery, [$dateRange['start'], $dateRange['end']]);
+            Log::debug('ReportController@getFinancialSummary: Hasil query revenue chart', [
+                'data_points_count' => count($revenueData)
+            ]);
 
             // Get service distribution
+            Log::debug('ReportController@getFinancialSummary: Menjalankan query service distribution');
             $servicesQuery = "
                 SELECT 
                     s.name as service_name,
@@ -87,8 +113,12 @@ class ReportController extends Controller
             ";
 
             $servicesData = DB::select($servicesQuery, [$dateRange['start'], $dateRange['end']]);
+            Log::debug('ReportController@getFinancialSummary: Hasil query service distribution', [
+                'services_count' => count($servicesData)
+            ]);
 
             // Get recent transactions
+            Log::debug('ReportController@getFinancialSummary: Menjalankan query recent transactions');
             $transactionsQuery = "
                 SELECT 
                     t.transaction_number,
@@ -109,7 +139,11 @@ class ReportController extends Controller
             ";
 
             $transactions = DB::select($transactionsQuery, [$dateRange['start'], $dateRange['end']]);
+            Log::debug('ReportController@getFinancialSummary: Hasil query recent transactions', [
+                'transactions_count' => count($transactions)
+            ]);
 
+            Log::debug('ReportController@getFinancialSummary: Semua query berhasil, mengembalikan response');
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -126,6 +160,12 @@ class ReportController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('ReportController@getFinancialSummary: Gagal mengambil data laporan', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'date_range' => $dateRange,
+                'period' => $period
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil data laporan',
@@ -139,9 +179,16 @@ class ReportController extends Controller
      */
     public function getTodaySummary()
     {
+        Log::debug('ReportController@getTodaySummary: Memulai proses mengambil summary hari ini');
+
         try {
             $today = now()->format('Y-m-d');
             $tomorrow = now()->addDay()->format('Y-m-d');
+
+            Log::debug('ReportController@getTodaySummary: Tanggal yang digunakan', [
+                'today' => $today,
+                'tomorrow' => $tomorrow
+            ]);
 
             $summaryQuery = "
                 SELECT 
@@ -152,7 +199,13 @@ class ReportController extends Controller
                 WHERE DATE(created_at) = ?
             ";
 
+            Log::debug('ReportController@getTodaySummary: Menjalankan query today summary');
             $summary = DB::select($summaryQuery, [$today])[0];
+            Log::debug('ReportController@getTodaySummary: Hasil query today summary', [
+                'total_transactions' => $summary->total_transactions,
+                'processing_count' => $summary->processing_count,
+                'total_income' => $summary->total_income
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -164,6 +217,10 @@ class ReportController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('ReportController@getTodaySummary: Gagal mengambil summary hari ini', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil summary hari ini',
@@ -177,11 +234,18 @@ class ReportController extends Controller
      */
     public function getRevenueComparison(Request $request)
     {
+        Log::debug('ReportController@getRevenueComparison: Memulai proses perbandingan revenue');
+        Log::debug('ReportController@getRevenueComparison: Request parameters', $request->all());
+
         $validator = Validator::make($request->all(), [
             'period' => 'required|in:week,month,quarter,year',
         ]);
 
         if ($validator->fails()) {
+            Log::warning('ReportController@getRevenueComparison: Validasi gagal', [
+                'errors' => $validator->errors()->toArray(),
+                'input_data' => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
@@ -189,14 +253,20 @@ class ReportController extends Controller
             ], 422);
         }
 
-        // PERBAIKAN: Gunakan input() method
         $period = $request->input('period');
+        Log::debug('ReportController@getRevenueComparison: Period yang dipilih', ['period' => $period]);
 
         $currentRange = $this->getDateRange($period);
         $previousRange = $this->getPreviousDateRange($period);
 
+        Log::debug('ReportController@getRevenueComparison: Date ranges', [
+            'current_range' => $currentRange,
+            'previous_range' => $previousRange
+        ]);
+
         try {
             // Current period revenue
+            Log::debug('ReportController@getRevenueComparison: Menjalankan query revenue comparison');
             $currentQuery = "
                 SELECT COALESCE(SUM(total_amount), 0) as total_income
                 FROM transactions 
@@ -211,7 +281,18 @@ class ReportController extends Controller
             $currentIncome = (float) $currentRevenue->total_income;
             $previousIncome = (float) $previousRevenue->total_income;
 
+            Log::debug('ReportController@getRevenueComparison: Hasil perhitungan revenue', [
+                'current_income' => $currentIncome,
+                'previous_income' => $previousIncome
+            ]);
+
             $growth = $previousIncome > 0 ? (($currentIncome - $previousIncome) / $previousIncome) * 100 : 0;
+            $growthAmount = $currentIncome - $previousIncome;
+
+            Log::debug('ReportController@getRevenueComparison: Growth calculation', [
+                'growth_percentage' => $growth,
+                'growth_amount' => $growthAmount
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -227,11 +308,18 @@ class ReportController extends Controller
                         'end_date' => $previousRange['end']
                     ],
                     'growth_percentage' => round($growth, 2),
-                    'growth_amount' => $currentIncome - $previousIncome
+                    'growth_amount' => $growthAmount
                 ]
             ]);
 
         } catch (\Exception $e) {
+            Log::error('ReportController@getRevenueComparison: Gagal mengambil perbandingan revenue', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'period' => $period,
+                'current_range' => $currentRange,
+                'previous_range' => $previousRange
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil perbandingan revenue',
@@ -245,6 +333,9 @@ class ReportController extends Controller
      */
     public function exportReport(Request $request)
     {
+        Log::debug('ReportController@exportReport: Memulai proses export report');
+        Log::debug('ReportController@exportReport: Request parameters', $request->all());
+
         $validator = Validator::make($request->all(), [
             'period' => 'required|in:week,month,quarter,year,custom',
             'start_date' => 'required_if:period,custom|date',
@@ -253,6 +344,10 @@ class ReportController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('ReportController@exportReport: Validasi export gagal', [
+                'errors' => $validator->errors()->toArray(),
+                'input_data' => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
@@ -260,16 +355,24 @@ class ReportController extends Controller
             ], 422);
         }
 
-        // PERBAIKAN: Gunakan input() method
         $period = $request->input('period');
         $format = $request->input('format');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
+        Log::debug('ReportController@exportReport: Parameter export', [
+            'period' => $period,
+            'format' => $format,
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
         $dateRange = $this->getDateRange($period, $startDate, $endDate);
+        Log::debug('ReportController@exportReport: Date range export', $dateRange);
 
         try {
             // Get detailed transactions for export
+            Log::debug('ReportController@exportReport: Menjalankan query export data');
             $exportQuery = "
                 SELECT 
                     t.transaction_number,
@@ -291,8 +394,12 @@ class ReportController extends Controller
             ";
 
             $transactions = DB::select($exportQuery, [$dateRange['start'], $dateRange['end']]);
+            Log::debug('ReportController@exportReport: Data transaksi untuk export', [
+                'transactions_count' => count($transactions)
+            ]);
 
             // Get summary for export
+            Log::debug('ReportController@exportReport: Menjalankan query summary untuk export');
             $summaryQuery = "
                 SELECT 
                     COUNT(*) as total_orders,
@@ -305,17 +412,31 @@ class ReportController extends Controller
             ";
 
             $summary = DB::select($summaryQuery, [$dateRange['start'], $dateRange['end']])[0];
+            Log::debug('ReportController@exportReport: Summary untuk export', [
+                'total_orders' => $summary->total_orders,
+                'total_income' => $summary->total_income,
+                'total_customers' => $summary->total_customers
+            ]);
 
             if ($format === 'csv') {
+                Log::debug('ReportController@exportReport: Memulai generate CSV');
                 return $this->generateCSV($transactions, $summary, $dateRange);
             }
 
+            Log::warning('ReportController@exportReport: Format export tidak didukung', ['format' => $format]);
             return response()->json([
                 'success' => false,
                 'message' => 'Format export tidak didukung'
             ], 400);
 
         } catch (\Exception $e) {
+            Log::error('ReportController@exportReport: Gagal mengekspor laporan', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'period' => $period,
+                'format' => $format,
+                'date_range' => $dateRange
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengekspor laporan',
@@ -329,7 +450,13 @@ class ReportController extends Controller
      */
     private function generateCSV($transactions, $summary, $dateRange)
     {
+        Log::debug('ReportController@generateCSV: Memulai generate file CSV', [
+            'transactions_count' => count($transactions),
+            'date_range' => $dateRange
+        ]);
+
         $fileName = 'laporan-keuangan-' . $dateRange['start'] . '-to-' . $dateRange['end'] . '.csv';
+        Log::debug('ReportController@generateCSV: Nama file yang akan dihasilkan', ['file_name' => $fileName]);
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -382,6 +509,7 @@ class ReportController extends Controller
             fclose($file);
         };
 
+        Log::debug('ReportController@generateCSV: CSV generation completed');
         return response()->stream($callback, 200, $headers);
     }
 
@@ -390,6 +518,12 @@ class ReportController extends Controller
      */
     private function getDateRange($period, $startDate = null, $endDate = null)
     {
+        Log::debug('ReportController@getDateRange: Menghitung date range', [
+            'period' => $period,
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
         $now = now();
 
         switch ($period) {
@@ -423,10 +557,13 @@ class ReportController extends Controller
                 $end = $now->endOfWeek()->format('Y-m-d 23:59:59');
         }
 
-        return [
+        $result = [
             'start' => $start,
             'end' => $end
         ];
+
+        Log::debug('ReportController@getDateRange: Hasil date range', $result);
+        return $result;
     }
 
     /**
@@ -434,6 +571,8 @@ class ReportController extends Controller
      */
     private function getPreviousDateRange($period)
     {
+        Log::debug('ReportController@getPreviousDateRange: Menghitung previous date range', ['period' => $period]);
+
         $now = now();
 
         switch ($period) {
@@ -462,10 +601,13 @@ class ReportController extends Controller
                 $end = $now->endOfWeek()->format('Y-m-d 23:59:59');
         }
 
-        return [
+        $result = [
             'start' => $start,
             'end' => $end
         ];
+
+        Log::debug('ReportController@getPreviousDateRange: Hasil previous date range', $result);
+        return $result;
     }
 
     /**
@@ -482,7 +624,13 @@ class ReportController extends Controller
             'completed' => 'Selesai'
         ];
 
-        return $translations[$status] ?? $status;
+        $result = $translations[$status] ?? $status;
+        Log::debug('ReportController@translateStatus: Translation', [
+            'original' => $status,
+            'translated' => $result
+        ]);
+
+        return $result;
     }
 
     /**
@@ -497,6 +645,12 @@ class ReportController extends Controller
             'overpaid' => 'Kelebihan'
         ];
 
-        return $translations[$paymentStatus] ?? $paymentStatus;
+        $result = $translations[$paymentStatus] ?? $paymentStatus;
+        Log::debug('ReportController@translatePaymentStatus: Translation', [
+            'original' => $paymentStatus,
+            'translated' => $result
+        ]);
+
+        return $result;
     }
 }

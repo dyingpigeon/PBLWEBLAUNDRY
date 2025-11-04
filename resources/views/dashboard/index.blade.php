@@ -6,7 +6,8 @@
     <div class="px-4">
         <!-- Welcome Section -->
         <div class="pt-4">
-            <h2 class="text-lg font-semibold text-gray-700">Selamat Pagi, Admin! 👋</h2>
+            <h2 class="text-lg font-semibold text-gray-700">Selamat {{ $waktu }}, {{ explode(' ', $user->name)[0] }}! 👋
+            </h2>
             <p class="text-sm text-gray-500">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</p>
         </div>
 
@@ -29,7 +30,8 @@
                 <!-- Pelanggan Baru -->
                 <button onclick="showAddCustomerModal()"
                     class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center active:scale-95 transition-all duration-200 hover:bg-gray-50 group">
-                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
+                    <div
+                        class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
                         <i class="fas fa-user-plus text-green-600 text-lg"></i>
                     </div>
                     <p class="text-sm font-medium text-gray-700">Pelanggan Baru</p>
@@ -38,7 +40,8 @@
                 <!-- Layanan & Harga -->
                 <a href="/services"
                     class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center active:scale-95 transition-all duration-200 hover:bg-gray-50 block group">
-                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
+                    <div
+                        class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
                         <i class="fas fa-tshirt text-orange-600 text-lg"></i>
                     </div>
                     <p class="text-sm font-medium text-gray-700">Layanan & Harga</p>
@@ -47,7 +50,8 @@
                 <!-- Lihat Laporan -->
                 <a href="/reports"
                     class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center active:scale-95 transition-all duration-200 hover:bg-gray-50 block group">
-                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
+                    <div
+                        class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 group-active:scale-110 transition-transform">
                         <i class="fas fa-chart-bar text-purple-600 text-lg"></i>
                     </div>
                     <p class="text-sm font-medium text-gray-700">Lihat Laporan</p>
@@ -127,7 +131,10 @@
     <!-- Transaction Wizard Modals -->
     @include('partials.transaction-customer-modal')
     @include('partials.transaction-service-modal')
-    @include('partials.transaction-items-modal')
+    @include('partials.transaction-kiloan-modal')
+    @include('partials.transaction-satuan-modal')
+    @include('partials.transaction-satuan-items-modal')
+    @include('partials.transaction-payment-modal')
     @include('partials.transaction-review-modal')
     @include('partials.transaction-success-modal')
 
@@ -136,36 +143,41 @@
 @endsection
 
 @push('styles')
-<style>
-.step-indicator {
-    transition: all 0.3s ease;
-}
-.step-active {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    color: white;
-}
-.step-completed {
-    background: #10b981;
-    color: white;
-}
-.service-card {
-    transition: all 0.2s ease;
-}
-.service-card:active {
-    transform: scale(0.98);
-}
-.quantity-btn {
-    min-width: 36px;
-    min-height: 36px;
-}
-</style>
+    <style>
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+
+        .step-active {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .step-completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .service-card {
+            transition: all 0.2s ease;
+        }
+
+        .service-card:active {
+            transform: scale(0.98);
+        }
+
+        .quantity-btn {
+            min-width: 36px;
+            min-height: 36px;
+        }
+    </style>
 @endpush
 
 @push('scripts')
-<script>
-    {!! file_get_contents(resource_path('js/dashboard.js')) !!}
-</script>
-<script>
-    {!! file_get_contents(resource_path('js/newTransaction.js')) !!}
-</script>
+    <script>
+        {!! file_get_contents(resource_path('js/dashboard.js')) !!}
+    </script>
+    <script>
+        {!! file_get_contents(resource_path('js/newTransaction.js')) !!}
+    </script>
 @endpush

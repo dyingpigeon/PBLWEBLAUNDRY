@@ -10,10 +10,11 @@
         </div>
 
         <div class="space-y-3">
+            <!-- PERBAIKAN: Tambah onclick event -->
             <button onclick="performBackup()" class="w-full bg-yellow-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center">
                 <i class="fas fa-download mr-2"></i>Backup Sekarang
             </button>
-            <button onclick="closeBackupModal()" class="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold">
+            <button onclick="closeModal('backupModal')" class="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold">
                 Batal
             </button>
         </div>

@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\HeaderController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -40,16 +41,24 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Service Routes
+// Service Routes - FIXED VERSION
     Route::prefix('services')->group(function () {
         // Basic service routes
         Route::get('/', [ServiceController::class, 'index'])->name('services.index');
         Route::post('/', [ServiceController::class, 'store'])->name('services.store');
-        Route::get('/{serviceId}', [ServiceController::class, 'getServiceWithItems'])->name('services.show');
-        Route::post('/{id}/toggle', [ServiceController::class, 'toggleService']);
+
+        // ✅ SINGLE ROUTE untuk show - HAPUS DUPLIKAT
+        Route::get('/{serviceId}', [ServiceController::class, 'show'])->name('services.show');
+
+        // Service actions - TAMBAHKAN INI
+        Route::post('/{id}/toggle', [ServiceController::class, 'toggleService'])->name('services.toggle');
+        Route::get('/{id}/edit', [ServiceController::class, 'getServiceForEdit'])->name('services.edit'); // ✅ UNTUK EDIT MODAL
+        Route::post('/{id}', [ServiceController::class, 'updateService'])->name('services.update'); // ✅ UNTUK UPDATE SERVICE
+        Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('services.destroy'); // ✅ UNTUK DELETE SERVICE
 
         // Service items routes
         Route::post('/{serviceId}/items', [ServiceController::class, 'addServiceItem'])->name('services.items.store');
-        Route::put('/{serviceId}/items/{itemId}', [ServiceController::class, 'updateServiceItem'])->name('services.items.update');
+        Route::post('/{serviceId}/items/{itemId}', [ServiceController::class, 'updateServiceItem'])->name('services.items.update'); // ✅ GUNAKAN POST ATAU PUT
         Route::delete('/{serviceId}/items/{itemId}', [ServiceController::class, 'deleteServiceItem'])->name('services.items.delete');
     });
 
@@ -61,24 +70,53 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
         Route::put('/{transaction}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
         Route::get('/{transaction}/receipt', [TransactionController::class, 'printReceipt'])->name('transactions.receipt');
+
+        // API Routes untuk transaction creation
         Route::post('/customers', [TransactionController::class, 'getCustomers'])->name('transactions.getCustomers');
         Route::post('/services', [TransactionController::class, 'getServices'])->name('transactions.getServices');
     });
 
-    // API Routes untuk data
-    Route::prefix('api')->group(function () {
-        Route::get('/top-customers', [CustomerController::class, 'getTopCustomers'])->name('customers.top');
-        Route::get('/transactions/customers', [TransactionController::class, 'getCustomers'])->name('transactions.customers');
-        Route::get('/transactions/services', [TransactionController::class, 'getServices'])->name('transactions.services');
-        Route::get('/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('transactions.today-summary');
-        Route::get('/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('transactions.recent');
+    Route::prefix('tracking')->group(function () {
+        Route::get('/', [TrackingController::class, 'index'])->name('tracking.index');
+        Route::get('/search', [TrackingController::class, 'search'])->name('tracking.search');
+        Route::get('/filter', [TrackingController::class, 'filterByStatus'])->name('tracking.filter');
+        Route::get('/{id}', [TrackingController::class, 'show'])->name('tracking.show');
+        Route::put('/{id}/status', [TrackingController::class, 'updateStatus'])->name('tracking.updateStatus');
+        Route::put('/{id}/payment', [TrackingController::class, 'updatePayment'])->name('tracking.updatePayment');
+    });
 
-        // REPORT API ROUTES - TAMBAHKAN INI
+
+
+    // API Routes untuk data
+    // routes/web.php - Dalam group prefix('api')
+
+    Route::prefix('api')->group(function () {
+        // Customer API
+        Route::get('/top-customers', [CustomerController::class, 'getTopCustomers'])->name('customers.top');
+        Route::get('/transactions/customers', [TransactionController::class, 'getCustomers'])->name('api.transactions.customers');
+
+        // Service API - PERBAIKAN: Gunakan nama route yang konsisten
+        Route::get('/transactions/services', [TransactionController::class, 'getServices'])->name('api.transactions.services');
+        Route::get('/transactions/categories', [TransactionController::class, 'getCategories'])->name('api.transactions.categories');
+        Route::get('/transactions/categories/{categoryId}/items', [TransactionController::class, 'getCategoryItems'])->name('api.transactions.category.items');
+
+        // Transaction API
+        Route::get('/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('api.transactions.today-summary');
+        Route::get('/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('api.transactions.recent');
+        Route::post('/transactions', [TransactionController::class, 'store'])->name('api.transactions.store');
+        // Report API
         Route::prefix('reports')->group(function () {
             Route::get('/financial-summary', [ReportController::class, 'getFinancialSummary'])->name('reports.financial-summary');
             Route::get('/today-summary', [ReportController::class, 'getTodaySummary'])->name('reports.today-summary');
             Route::get('/revenue-comparison', [ReportController::class, 'getRevenueComparison'])->name('reports.revenue-comparison');
             Route::post('/export', [ReportController::class, 'exportReport'])->name('reports.export');
+        });
+
+        Route::prefix('tracking')->group(function () {
+            Route::get('/today', [TrackingController::class, 'getTodayTransactions'])->name('api.tracking.today');
+            Route::get('/stats', [TrackingController::class, 'getStats'])->name('api.tracking.stats');
+            Route::get('/stats/processing', [TrackingController::class, 'getProcessingStats'])->name('api.tracking.processingStats');
+            Route::get('/{id}/details', [TrackingController::class, 'getTransactionWithDetails'])->name('api.tracking.details');
         });
     });
 
@@ -92,14 +130,41 @@ Route::middleware(['auth'])->group(function () {
 
     // Other Routes
     Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index');
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'); // Halaman laporan
-    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    // Settings Routes
+    // Settings Routes
+// Settings Routes
+    Route::prefix('settings')->group(function () {
+        Route::get('/', [SettingController::class, 'index'])->name('settings.index');
+        Route::get('/business', [SettingController::class, 'getBusinessSettings'])->name('settings.business.get');
+        Route::post('/business', [SettingController::class, 'saveBusinessSettings'])->name('settings.business.save');
+        Route::get('/hours', [SettingController::class, 'getBusinessHours'])->name('settings.hours.get');
+        Route::post('/hours', [SettingController::class, 'saveBusinessHours'])->name('settings.hours.save');
+        Route::get('/receipt', [SettingController::class, 'getReceiptSettings'])->name('settings.receipt.get');
+        Route::post('/receipt', [SettingController::class, 'saveReceiptSettings'])->name('settings.receipt.save');
+        Route::get('/notifications', [SettingController::class, 'getNotificationSettings'])->name('settings.notifications.get');
+        Route::post('/notifications', [SettingController::class, 'saveNotificationSettings'])->name('settings.notifications.save');
+        Route::post('/backup', [SettingController::class, 'performBackup'])->name('settings.backup');
+        Route::post('/reset', [SettingController::class, 'resetData'])->name('settings.reset');
+    });
+
+    // Header Routes
+// Header Routes
+    Route::prefix('header')->group(function () {
+        Route::get('/view', [HeaderController::class, 'renderHeader'])->name('header.view');
+        Route::get('/business-name', [HeaderController::class, 'getBusinessName'])->name('header.business-name');
+        Route::get('/data', [HeaderController::class, 'getHeaderData'])->name('header.data');
+        Route::post('/business-name', [HeaderController::class, 'updateBusinessName'])->name('header.update-business-name');
+        Route::get('/notifications', [HeaderController::class, 'getNotifications'])->name('header.notifications');
+    });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Temporary routes (coming soon)
+    // Temporary 
+    // 
+    // routes (coming soon)
     Route::get('/forgot-password', function () {
         return view('coming-soon');
     })->name('password.request');
@@ -110,7 +175,7 @@ Route::fallback(function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
-// routes/web.php
+// Static JS files
 Route::get('/js/{file}', function ($file) {
     $path = resource_path('js/' . $file);
 

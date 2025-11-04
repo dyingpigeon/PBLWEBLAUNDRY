@@ -1,3 +1,4 @@
+<!-- transaction-customer-modal.blade.php -->
 <!-- Customer Selection Modal -->
 <div id="customerModal" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden">
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-screen overflow-hidden flex flex-col">
@@ -53,6 +54,3 @@
         </div>
     </div>
 </div>
-
-<!-- Include Add Customer Modal -->
-@include('partials.customer-add-modal')
