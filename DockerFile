@@ -25,10 +25,10 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi
 # Generate APP_KEY (hanya jika belum ada)
 RUN php artisan key:generate --force || true
 
-# Temporary fix: Set cache driver ke file sebelum clear cache
-RUN php artisan config:set cache.default=file && \
-    php artisan config:set session.driver=file && \
-    php artisan config:set queue.default=sync
+# Set temporary environment variables untuk menghindari SQLite error
+ENV CACHE_DRIVER=file
+ENV SESSION_DRIVER=file
+ENV QUEUE_CONNECTION=sync
 
 # Clear cache dan optimasi untuk production
 RUN php artisan config:clear && \
@@ -36,11 +36,6 @@ RUN php artisan config:clear && \
     php artisan route:clear && \
     php artisan view:clear && \
     composer dump-autoload
-
-# Set konfigurasi production yang benar
-RUN php artisan config:set cache.default=file && \
-    php artisan config:set session.driver=file && \
-    php artisan config:set queue.default=sync
 
 # Cache config dan route untuk production
 RUN php artisan config:cache && \
