@@ -22,10 +22,26 @@ RUN composer install --no-dev --optimize-autoloader
 # Copy .env.example jadi .env kalau belum ada
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
+# FORCE MySQL configuration dengan environment variables
+ENV DB_CONNECTION=mysql
+ENV DB_HOST=mysql-production-df57.up.railway.app
+ENV DB_PORT=3306
+ENV DB_DATABASE=railway
+ENV DB_USERNAME=root
+ENV DB_PASSWORD=ktgITtjjPYEQAaUpPxxEiwPvLUTKXTNy
+
+# Force session dan cache menggunakan file (bukan sqlite)
+ENV SESSION_DRIVER=file
+ENV CACHE_DRIVER=file
+ENV QUEUE_CONNECTION=sync
+
+# Hapus baris SESSION_CONNECTION dari .env jika ada
+RUN sed -i '/SESSION_CONNECTION/d' .env
+
 # Generate APP_KEY (hanya jika belum ada)
 RUN php artisan key:generate --force || true
 
-# Hanya clear config, route, dan view cache
+# Clear cache dan optimasi
 RUN php artisan config:clear && \
     php artisan route:clear && \
     php artisan view:clear
