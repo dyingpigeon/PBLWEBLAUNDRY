@@ -17,6 +17,45 @@
     <div class="bg-white rounded-2xl shadow-xl p-6">
         <h2 class="text-xl font-semibold text-gray-800 text-center mb-6">Masuk ke Akun Anda</h2>
         
+        <!-- Error Notification -->
+        @if($errors->any())
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl animate-fade-in">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">
+                        Login Gagal
+                    </h3>
+                    <div class="mt-1 text-sm text-red-700">
+                        <ul class="list-disc list-inside space-y-1">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Success Message (jika ada) -->
+        @if(session('status'))
+        <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl animate-fade-in">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-green-800">
+                        {{ session('status') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+        
         <form method="POST" action="{{ route('login') }}" id="loginForm">
             @csrf
             
@@ -29,13 +68,20 @@
                     type="email" 
                     id="email" 
                     name="email"
+                    value="{{ old('email') }}"
                     required 
                     autocomplete="email"
                     autofocus
-                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 input-autofill"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 input-autofill @error('email') border-red-500 bg-red-50 @enderror"
                     placeholder="email@example.com"
                     inputmode="email"
                 >
+                @error('email')
+                <p class="mt-1 text-sm text-red-600 flex items-center">
+                    <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
+                    {{ $message }}
+                </p>
+                @enderror
             </div>
 
             <!-- Password Input -->
@@ -50,7 +96,7 @@
                         name="password"
                         required
                         autocomplete="current-password"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 input-autofill pr-12"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 input-autofill pr-12 @error('password') border-red-500 bg-red-50 @enderror"
                         placeholder="Masukkan password"
                     >
                     <button 
@@ -61,6 +107,12 @@
                         <i class="fas fa-eye" id="passwordToggle"></i>
                     </button>
                 </div>
+                @error('password')
+                <p class="mt-1 text-sm text-red-600 flex items-center">
+                    <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
+                    {{ $message }}
+                </p>
+                @enderror
             </div>
 
             <!-- Remember Me & Forgot Password -->
@@ -127,6 +179,37 @@
     </p>
 </div>
 
+@push('styles')
+<style>
+    /* Animasi untuk notifikasi */
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
+    
+    /* Shake animation untuk input error */
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    .shake {
+        animation: shake 0.3s ease-in-out;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
     // Toggle Password Visibility
@@ -143,21 +226,32 @@
         }
     }
 
-    // Biometric Authentication Support Detection
+    // Auto focus pada input pertama yang error
     document.addEventListener('DOMContentLoaded', function() {
+        // Cari input yang memiliki error
+        const firstErrorInput = document.querySelector('.border-red-500');
+        if (firstErrorInput) {
+            firstErrorInput.focus();
+            firstErrorInput.classList.add('shake');
+            
+            // Hapus animasi shake setelah selesai
+            setTimeout(() => {
+                firstErrorInput.classList.remove('shake');
+            }, 300);
+        }
+
+        // Biometric Authentication Support Detection
         const biometricSection = document.getElementById('biometricSection');
         const biometricBtn = document.getElementById('biometricBtn');
         const biometricText = document.getElementById('biometricText');
         
         // Check if WebAuthn is supported
         if (window.PublicKeyCredential) {
-            // Check specific biometric availability
             PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
                 .then(available => {
                     if (available) {
                         biometricSection.classList.remove('hidden');
                         
-                        // Detect device type for better text
                         if (navigator.userAgent.match(/iPhone|iPad|iPod/)) {
                             biometricText.textContent = 'Face ID';
                         } else if (navigator.userAgent.match(/Android/)) {
@@ -174,14 +268,12 @@
 
         // Biometric Login Handler
         biometricBtn.addEventListener('click', function() {
-            // Simulate biometric login for demo
             simulateBiometricLogin();
         });
 
         // Auto-fill optimization
         const loginForm = document.getElementById('loginForm');
         loginForm.addEventListener('submit', function(e) {
-            // Add loading state
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
             submitBtn.disabled = true;
@@ -204,7 +296,6 @@
         biometricBtn.disabled = true;
         
         setTimeout(() => {
-            // Auto-fill demo credentials
             document.getElementById('email').value = 'admin@laundryku.com';
             document.getElementById('password').value = 'password';
             
@@ -213,21 +304,10 @@
             biometricBtn.classList.add('bg-green-500', 'text-white');
             
             setTimeout(() => {
-                // Auto-submit after successful biometric
                 document.getElementById('loginForm').submit();
             }, 1000);
         }, 1500);
     }
-
-    // Enhanced auto-fill detection
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
-        input.addEventListener('animationstart', (e) => {
-            if (e.animationName === 'onAutoFillStart') {
-                input.parentElement.classList.add('auto-filled');
-            }
-        });
-    });
 </script>
 @endpush
 @endsection
