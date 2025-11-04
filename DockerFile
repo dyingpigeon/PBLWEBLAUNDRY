@@ -25,6 +25,11 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi
 # Generate APP_KEY (hanya jika belum ada)
 RUN php artisan key:generate --force || true
 
+# Hanya clear config, route, dan view cache
+RUN php artisan config:clear && \
+    php artisan route:clear && \
+    php artisan view:clear
+
 # Cache config dan route untuk production
 RUN php artisan config:cache && \
     php artisan route:cache && \
@@ -33,18 +38,5 @@ RUN php artisan config:cache && \
 # Expose port (Railway akan deteksi ini)
 EXPOSE 8000
 
-# Buat startup script
-RUN echo '#!/bin/bash\n\
-php artisan config:clear\n\
-php artisan cache:clear\n\
-php artisan route:clear\n\
-php artisan view:clear\n\
-php artisan config:cache\n\
-php artisan route:cache\n\
-php artisan view:cache\n\
-php artisan serve --host=0.0.0.0 --port=8000\n\
-' > /start.sh && chmod +x /start.sh
-
-# Jalankan dengan startup script
-CMD ["/start.sh"]
+# Jalankan Laravel dengan PHP built-in server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
