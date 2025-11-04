@@ -8,42 +8,42 @@
     <div class="bg-white px-4 py-3 border-b border-gray-200 sticky top-0 z-10">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-800">Laporan Keuangan</h2>
-            <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+            <button id="exportBtn" type="button" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">
                 <i class="fas fa-download mr-1"></i>Export
             </button>
         </div>
 
         <!-- Date Range Picker -->
         <div class="flex items-center space-x-2 mb-3">
-            <button id="prevPeriod" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+            <button id="prevPeriod" type="button" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
                 <i class="fas fa-chevron-left"></i>
             </button>
             
             <div class="flex-1">
-                <button id="dateRangeBtn" class="w-full bg-gray-100 border border-gray-300 rounded-lg py-2 px-3 text-sm text-gray-700 flex items-center justify-center">
+                <button id="dateRangeBtn" type="button" class="w-full bg-gray-100 border border-gray-300 rounded-lg py-2 px-3 text-sm text-gray-700 flex items-center justify-center hover:bg-gray-200 transition-colors">
                     <i class="fas fa-calendar-alt mr-2 text-gray-500"></i>
                     <span id="dateRangeText">Minggu Ini</span>
                     <i class="fas fa-chevron-down ml-2 text-gray-500 text-xs"></i>
                 </button>
             </div>
             
-            <button id="nextPeriod" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+            <button id="nextPeriod" type="button" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
                 <i class="fas fa-chevron-right"></i>
             </button>
         </div>
 
         <!-- Quick Period Tabs -->
         <div class="swipeable-periods flex overflow-x-auto space-x-2 pb-1" style="scrollbar-width: none;">
-            <button class="period-tab flex-shrink-0 px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium active-period">
+            <button type="button" class="period-tab flex-shrink-0 px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium active-period hover:bg-blue-200 transition-colors">
                 Minggu
             </button>
-            <button class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+            <button type="button" class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
                 Bulan
             </button>
-            <button class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+            <button type="button" class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
                 3 Bulan
             </button>
-            <button class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+            <button type="button" class="period-tab flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
                 Custom
             </button>
         </div>
@@ -95,7 +95,6 @@
                 <span class="text-xs text-gray-500" id="revenueChartPeriod">7 hari terakhir</span>
             </div>
             <div class="h-40">
-                <!-- PERUBAHAN: Ganti div dengan canvas -->
                 <canvas id="revenueChart"></canvas>
             </div>
         </div>
@@ -107,7 +106,6 @@
                 <span class="text-xs text-gray-500" id="servicesChartPeriod">Minggu ini</span>
             </div>
             <div class="h-40">
-                <!-- PERUBAHAN: Ganti div dengan canvas -->
                 <canvas id="servicesChart"></canvas>
             </div>
         </div>

@@ -1,734 +1,718 @@
 // reportsPage.js
-// Handle halaman laporan keuangan (charts, period selection, export)
+class ReportsPage {
+    constructor() {
+        this.currentPeriod = "week";
+        this.currentDateRange = this.getCurrentWeekRange();
+        this.revenueChart = null;
+        this.servicesChart = null;
 
-let currentPeriod = 'week';
-let currentDateRange = getCurrentWeekRange();
-let revenueChart, servicesChart;
-
-// Sample data sebagai fallback
-const sampleData = {
-    week: {
-        revenue: [450000, 520000, 380000, 610000, 550000, 480000, 590000],
-        services: {
-            'Cuci Setrika': 45,
-            'Cuci Biasa': 32,
-            'Setrika Saja': 28,
-            'Dry Clean': 19
-        },
-        transactions: [
-            { date: '15 Jan', customer: 'Budi Santoso', service: 'Cuci Setrika', amount: 40000, status: 'completed' },
-            { date: '15 Jan', customer: 'Siti Rahayu', service: 'Setrika Saja', amount: 30000, status: 'completed' },
-            { date: '14 Jan', customer: 'Ahmad Fauzi', service: 'Dry Clean', amount: 75000, status: 'completed' },
-            { date: '14 Jan', customer: 'Dewi Lestari', service: 'Cuci Biasa', amount: 35000, status: 'completed' },
-            { date: '13 Jan', customer: 'Rizki Pratama', service: 'Cuci Setrika', amount: 55000, status: 'completed' }
-        ]
-    },
-    month: {
-        revenue: [420000, 480000, 510000, 390000, 450000, 520000, 380000, 610000, 550000, 480000, 590000, 520000, 450000, 510000, 480000, 420000, 460000, 490000, 530000, 470000, 440000, 510000, 480000, 520000, 460000, 490000, 510000, 540000, 470000, 520000],
-        services: {
-            'Cuci Setrika': 120,
-            'Cuci Biasa': 85,
-            'Setrika Saja': 65,
-            'Dry Clean': 40
-        },
-        transactions: []
+        this.init();
     }
-};
 
-// ===== INITIALIZATION FUNCTIONS =====
+    init() {
+        this.initializeCharts();
+        this.setupEventListeners();
+        this.loadReportData();
+    }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Tunggu sebentar untuk memastikan DOM selesai load
-    setTimeout(() => {
-        initializeCharts();
-        loadReportDataFromAPI();
-        setupEventListeners();
-        setupSwipeGestures();
-    }, 100);
-});
+    // Initialize Charts
+    initializeCharts() {
+        console.log("Initializing charts...");
 
-// Initialize charts dengan error handling
-function initializeCharts() {
-    try {
-        // Revenue Chart - Periksa apakah elemen ada dan adalah canvas
-        const revenueCanvas = document.getElementById('revenueChart');
-        if (!revenueCanvas) {
-            console.error('Element dengan ID revenueChart tidak ditemukan');
-            return;
-        }
-        
-        if (revenueCanvas.tagName !== 'CANVAS') {
-            console.error('Element revenueChart bukan canvas element');
-            return;
-        }
-
-        const revenueCtx = revenueCanvas.getContext('2d');
-        revenueChart = new Chart(revenueCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
-                datasets: [{
-                    label: 'Pendapatan',
-                    data: [],
-                    backgroundColor: '#3b82f6',
-                    borderColor: '#3b82f6',
-                    borderWidth: 0,
-                    borderRadius: 4,
-                    borderSkipped: false,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `Rp ${context.raw.toLocaleString()}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
+        // Revenue Chart
+        const revenueCtx = document.getElementById("revenueChart");
+        if (revenueCtx) {
+            this.revenueChart = new Chart(revenueCtx, {
+                type: "bar",
+                data: {
+                    labels: ["Loading..."],
+                    datasets: [
+                        {
+                            label: "Pendapatan",
+                            data: [0],
+                            backgroundColor: "#3b82f6",
+                            borderColor: "#3b82f6",
+                            borderWidth: 0,
+                            borderRadius: 4,
                         },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + (value / 1000) + 'k';
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-            }
-        });
-
-        // Services Chart - Periksa apakah elemen ada dan adalah canvas
-        const servicesCanvas = document.getElementById('servicesChart');
-        if (!servicesCanvas) {
-            console.error('Element dengan ID servicesChart tidak ditemukan');
-            return;
-        }
-        
-        if (servicesCanvas.tagName !== 'CANVAS') {
-            console.error('Element servicesChart bukan canvas element');
-            return;
-        }
-
-        const servicesCtx = servicesCanvas.getContext('2d');
-        servicesChart = new Chart(servicesCtx, {
-            type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [
-                        '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'
                     ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 15
-                        }
-                    }
-                }
-            }
-        });
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) =>
+                                    `Rp ${this.formatPrice(context.raw)}`,
+                            },
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: "rgba(0,0,0,0.1)" },
+                            ticks: {
+                                callback: (value) => "Rp " + value / 1000 + "k",
+                            },
+                        },
+                        x: { grid: { display: false } },
+                    },
+                },
+            });
+        }
 
-        console.log('Charts initialized successfully');
-    } catch (error) {
-        console.error('Error initializing charts:', error);
+        // Services Chart
+        const servicesCtx = document.getElementById("servicesChart");
+        if (servicesCtx) {
+            this.servicesChart = new Chart(servicesCtx, {
+                type: "doughnut",
+                data: {
+                    labels: ["Loading..."],
+                    datasets: [
+                        {
+                            data: [100],
+                            backgroundColor: ["#E5E7EB"],
+                            borderWidth: 0,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "60%",
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: { boxWidth: 12, padding: 15 },
+                        },
+                    },
+                },
+            });
+        }
     }
-}
 
-// ===== EVENT HANDLING FUNCTIONS =====
-
-// Setup event listeners
-function setupEventListeners() {
-    try {
+    // Setup Event Listeners
+    setupEventListeners() {
         // Period tabs
-        const periodTabs = document.querySelectorAll('.period-tab');
-        periodTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                periodTabs.forEach(t => t.classList.remove('active-period'));
-                this.classList.add('active-period');
-                
-                currentPeriod = this.textContent.toLowerCase().includes('minggu') ? 'week' :
-                              this.textContent.toLowerCase().includes('bulan') ? 'month' : 
-                              this.textContent.toLowerCase().includes('3') ? 'quarter' : 'custom';
-                
-                loadReportDataFromAPI();
+        document.querySelectorAll(".period-tab").forEach((tab) => {
+            tab.addEventListener("click", (e) => {
+                document
+                    .querySelectorAll(".period-tab")
+                    .forEach((t) => t.classList.remove("active-period"));
+                e.target.classList.add("active-period");
+
+                const periodText = e.target.textContent.trim().toLowerCase();
+                this.currentPeriod = this.mapPeriodType(periodText);
+                this.loadReportData();
             });
         });
 
         // Date range picker
-        const dateRangeBtn = document.getElementById('dateRangeBtn');
-        if (dateRangeBtn) {
-            dateRangeBtn.addEventListener('click', function() {
-                const dateModal = document.getElementById('dateModal');
-                if (dateModal) {
-                    dateModal.classList.remove('hidden');
-                }
+        document
+            .getElementById("dateRangeBtn")
+            ?.addEventListener("click", () => {
+                document.getElementById("dateModal").classList.remove("hidden");
             });
-        }
 
         // Navigation buttons
-        const prevPeriodBtn = document.getElementById('prevPeriod');
-        const nextPeriodBtn = document.getElementById('nextPeriod');
-        
-        if (prevPeriodBtn) {
-            prevPeriodBtn.addEventListener('click', navigatePeriod(-1));
-        }
-        if (nextPeriodBtn) {
-            nextPeriodBtn.addEventListener('click', navigatePeriod(1));
-        }
+        document
+            .getElementById("prevPeriod")
+            ?.addEventListener("click", () => this.navigatePeriod("prev"));
+        document
+            .getElementById("nextPeriod")
+            ?.addEventListener("click", () => this.navigatePeriod("next"));
 
         // Export button
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', function() {
-                const exportModal = document.getElementById('exportModal');
-                if (exportModal) {
-                    exportModal.classList.remove('hidden');
-                }
+        document.getElementById("exportBtn")?.addEventListener("click", () => {
+            document.getElementById("exportModal").classList.remove("hidden");
+        });
+
+        // Quick date selection - PERBAIKAN 1: Update untuk modal yang diperbaiki
+        document.querySelectorAll(".quick-date-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const period = e.target.closest("button").dataset.period;
+                this.selectQuickDate(period);
             });
-        }
-    } catch (error) {
-        console.error('Error setting up event listeners:', error);
-    }
-}
-
-// Setup swipe gestures for periods
-function setupSwipeGestures() {
-    try {
-        const periodsContainer = document.querySelector('.swipeable-periods');
-        if (!periodsContainer) return;
-
-        let startX;
-
-        periodsContainer.addEventListener('touchstart', e => {
-            startX = e.touches[0].clientX;
         });
 
-        periodsContainer.addEventListener('touchend', e => {
-            if (!startX) return;
-            
-            const endX = e.changedTouches[0].clientX;
-            const diff = startX - endX;
-            
-            if (Math.abs(diff) > 50) {
-                const periodTabs = document.querySelectorAll('.period-tab');
-                const activeIndex = Array.from(periodTabs).findIndex(tab => 
-                    tab.classList.contains('active-period')
+        // Apply custom date range - PERBAIKAN 2: Update untuk modal yang diperbaiki
+        document
+            .getElementById("applyCustomDate")
+            ?.addEventListener("click", () => {
+                this.applyCustomDateRange();
+            });
+
+        // Export format buttons
+        document.querySelectorAll(".export-format-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const format = e.target.closest("button").dataset.format;
+                this.exportReport(format);
+            });
+        });
+
+        // Modal close buttons
+        document.querySelectorAll(".close-modal-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const modalId = e.target.closest("button").dataset.modal;
+                document.getElementById(modalId).classList.add("hidden");
+            });
+        });
+
+        // Close modals on backdrop click
+        document.getElementById("dateModal")?.addEventListener("click", (e) => {
+            if (e.target.id === "dateModal") this.closeModal("dateModal");
+        });
+
+        document
+            .getElementById("exportModal")
+            ?.addEventListener("click", (e) => {
+                if (e.target.id === "exportModal")
+                    this.closeModal("exportModal");
+            });
+    }
+
+    // Load Report Data from API - PERBAIKAN 3: Update URL ke API route
+    async loadReportData() {
+        this.showLoading();
+
+        try {
+            const params = new URLSearchParams({
+                period: this.currentPeriod,
+            });
+
+            // Add dates for custom period
+            if (
+                this.currentPeriod === "custom" &&
+                this.currentDateRange.start &&
+                this.currentDateRange.end
+            ) {
+                params.append(
+                    "start_date",
+                    this.formatDateForAPI(this.currentDateRange.start)
                 );
-                
-                if (diff > 0 && activeIndex < periodTabs.length - 1) {
-                    periodTabs[activeIndex + 1].click();
-                } else if (diff < 0 && activeIndex > 0) {
-                    periodTabs[activeIndex - 1].click();
-                }
+                params.append(
+                    "end_date",
+                    this.formatDateForAPI(this.currentDateRange.end)
+                );
             }
-            
-            startX = null;
-        });
-    } catch (error) {
-        console.error('Error setting up swipe gestures:', error);
+
+            // PERBAIKAN 4: Ganti URL ke API route
+            const response = await fetch(
+                `/api/reports/financial-summary?${params}`,
+                {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        Accept: "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.updateUI(data.data);
+            } else {
+                throw new Error(data.message || "Gagal memuat data");
+            }
+        } catch (error) {
+            console.error("Error loading report data:", error);
+            this.showError("Gagal memuat data laporan: " + error.message);
+        } finally {
+            this.hideLoading();
+        }
     }
-}
 
-// ===== API INTEGRATION FUNCTIONS =====
-
-// Load report data from API
-async function loadReportDataFromAPI() {
-    try {
-        showLoading();
-        
-        const params = new URLSearchParams({
-            period: currentPeriod
-        });
-
-        // Tambahkan tanggal untuk custom period
-        if (currentPeriod === 'custom' && currentDateRange.start && currentDateRange.end) {
-            params.append('start_date', currentDateRange.start.toISOString().split('T')[0]);
-            params.append('end_date', currentDateRange.end.toISOString().split('T')[0]);
-        }
-
-        const response = await fetch(`/api/reports/financial-summary?${params}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-            processAPIData(data.data);
-        } else {
-            throw new Error(data.message || 'Gagal memuat data');
-        }
-    } catch (error) {
-        console.error('Error loading report data:', error);
-        showError('Gagal memuat data laporan, menggunakan sample data');
-        // Fallback to sample data
-        loadSampleData();
-    } finally {
-        hideLoading();
-    }
-}
-
-// Process API data
-function processAPIData(apiData) {
-    try {
+    // Update UI with API data
+    updateUI(apiData) {
         // Update summary cards
-        const totalIncomeEl = document.getElementById('totalIncome');
-        const totalOrdersEl = document.getElementById('totalOrders');
-        
+        this.updateSummaryCards(apiData.summary);
+
+        // Update charts
+        this.updateCharts(apiData);
+
+        // Update transactions list
+        this.updateTransactionsList(apiData.recent_transactions);
+
+        // Update date range display
+        this.updateDateRangeDisplay(apiData.date_range);
+    }
+
+    updateSummaryCards(summary) {
+        const totalIncomeEl = document.getElementById("totalIncome");
+        const totalOrdersEl = document.getElementById("totalOrders");
+
         if (totalIncomeEl) {
-            totalIncomeEl.textContent = `Rp ${formatPrice(apiData.summary.total_income)}`;
+            totalIncomeEl.textContent = `Rp ${this.formatPrice(
+                summary.total_income
+            )}`;
         }
         if (totalOrdersEl) {
-            totalOrdersEl.textContent = apiData.summary.total_orders;
+            totalOrdersEl.textContent = summary.total_orders;
         }
 
-        // Process revenue chart data
-        const revenueData = processRevenueChartData(apiData.revenue_chart);
-        updateRevenueChart(revenueData);
+        // Update growth indicators
+        const incomeGrowthEl = document.getElementById("incomeGrowth");
+        const ordersGrowthEl = document.getElementById("ordersGrowth");
 
-        // Process services chart data
-        const servicesData = processServicesChartData(apiData.services_distribution);
-        updateServicesChart(servicesData);
-
-        // Process transactions list
-        updateTransactionsListFromAPI(apiData.recent_transactions);
-
-        // Update current date range
-        if (apiData.date_range) {
-            currentDateRange = {
-                start: new Date(apiData.date_range.start),
-                end: new Date(apiData.date_range.end)
-            };
-            updateDateRangeText();
+        if (incomeGrowthEl) {
+            incomeGrowthEl.innerHTML =
+                '<i class="fas fa-arrow-up mr-1"></i>0% vs periode lalu';
         }
-    } catch (error) {
-        console.error('Error processing API data:', error);
-    }
-}
-
-// Process revenue chart data from API
-function processRevenueChartData(revenueChartData) {
-    if (!revenueChartData || revenueChartData.length === 0) {
-        return sampleData[currentPeriod]?.revenue || [0,0,0,0,0,0,0];
+        if (ordersGrowthEl) {
+            ordersGrowthEl.innerHTML =
+                '<i class="fas fa-chart-line mr-1"></i>0% vs periode lalu';
+        }
     }
 
-    // Jika data harian, extract daily_income
-    return revenueChartData.map(item => parseFloat(item.daily_income) || 0);
-}
+    updateCharts(apiData) {
+        // Update revenue chart
+        if (this.revenueChart && apiData.revenue_chart) {
+            const revenueData = this.processRevenueChartData(
+                apiData.revenue_chart
+            );
+            this.revenueChart.data.labels = revenueData.labels;
+            this.revenueChart.data.datasets[0].data = revenueData.data;
+            this.revenueChart.update();
+        }
 
-// Process services chart data from API
-function processServicesChartData(servicesData) {
-    if (!servicesData || servicesData.length === 0) {
-        return sampleData[currentPeriod]?.services || {};
+        // Update services chart
+        if (this.servicesChart && apiData.services_distribution) {
+            const servicesData = this.processServicesChartData(
+                apiData.services_distribution
+            );
+            this.servicesChart.data.labels = servicesData.labels;
+            this.servicesChart.data.datasets[0].data = servicesData.data;
+            this.servicesChart.data.datasets[0].backgroundColor =
+                servicesData.colors;
+            this.servicesChart.update();
+        }
     }
 
-    const distribution = {};
-    servicesData.forEach(service => {
-        distribution[service.service_name] = service.order_count;
-    });
-    return distribution;
-}
+    processRevenueChartData(revenueChartData) {
+        if (!revenueChartData || revenueChartData.length === 0) {
+            return { labels: ["No Data"], data: [0] };
+        }
 
-// Update transactions list from API data
-function updateTransactionsListFromAPI(transactions) {
-    try {
-        const container = document.getElementById('transactionsList');
+        const labels = revenueChartData.map((item) => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString("id-ID", { weekday: "short" });
+        });
+
+        const data = revenueChartData.map(
+            (item) => parseFloat(item.daily_income) || 0
+        );
+
+        return { labels, data };
+    }
+
+    processServicesChartData(servicesData) {
+        if (!servicesData || servicesData.length === 0) {
+            return { labels: ["No Data"], data: [100], colors: ["#E5E7EB"] };
+        }
+
+        const labels = servicesData.map((service) => service.service_name);
+        const data = servicesData.map((service) => service.order_count);
+        const colors = this.generateChartColors(servicesData.length);
+
+        return { labels, data, colors };
+    }
+
+    updateTransactionsList(transactions) {
+        const container = document.getElementById("transactionsList");
         if (!container) return;
-        
+
         if (!transactions || transactions.length === 0) {
             container.innerHTML = `
                 <div class="p-4 text-center text-gray-500">
                     <i class="fas fa-receipt text-2xl mb-2"></i>
-                    <p>Tidak ada transaksi</p>
+                    <p>Tidak ada transaksi pada periode ini</p>
                 </div>
             `;
             return;
         }
-        
-        container.innerHTML = transactions.map(transaction => `
-            <div class="p-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-receipt text-blue-600"></i>
-                    </div>
+
+        container.innerHTML = transactions
+            .map(
+                (transaction) => `
+            <div class="p-4 border-b border-gray-100">
+                <div class="flex justify-between items-start mb-2">
                     <div>
-                        <p class="font-medium text-gray-800">${transaction.customer_name}</p>
-                        <p class="text-sm text-gray-500">${transaction.service_name}</p>
-                        <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString('id-ID')}</p>
+                        <h4 class="font-semibold text-gray-800">${
+                            transaction.transaction_number
+                        }</h4>
+                        <p class="text-sm text-gray-600">${
+                            transaction.customer_name
+                        }</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-gray-800">Rp ${this.formatPrice(
+                            transaction.total_amount
+                        )}</p>
+                        <span class="inline-block px-2 py-1 text-xs rounded-full ${this.getStatusBadgeClass(
+                            transaction.payment_status
+                        )}">
+                            ${this.translatePaymentStatus(
+                                transaction.payment_status
+                            )}
+                        </span>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="font-semibold text-gray-800">Rp ${formatPrice(transaction.total_amount)}</p>
-                    <span class="inline-block px-2 py-1 bg-green-100 text-green-600 text-xs rounded-full">
-                        ${translateStatus(transaction.status)}
+                
+                <div class="flex items-center justify-between text-sm text-gray-600">
+                    <div class="flex items-center space-x-4">
+                        <span class="flex items-center">
+                            <i class="fas fa-tag mr-1 text-xs"></i>
+                            ${transaction.service_name}
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-calendar mr-1 text-xs"></i>
+                            ${new Date(
+                                transaction.created_at
+                            ).toLocaleDateString("id-ID")}
+                        </span>
+                    </div>
+                    <span class="text-xs ${this.getStatusColor(
+                        transaction.status
+                    )}">
+                        ${this.translateStatus(transaction.status)}
                     </span>
                 </div>
             </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error updating transactions list:', error);
+        `
+            )
+            .join("");
     }
-}
 
-// ===== FALLBACK FUNCTIONS =====
-
-// Load sample data as fallback
-function loadSampleData() {
-    try {
-        const data = sampleData[currentPeriod] || sampleData.week;
-        
-        const totalIncome = data.revenue.reduce((sum, val) => sum + val, 0);
-        const totalOrders = data.transactions.length;
-        
-        const totalIncomeEl = document.getElementById('totalIncome');
-        const totalOrdersEl = document.getElementById('totalOrders');
-        
-        if (totalIncomeEl) {
-            totalIncomeEl.textContent = `Rp ${formatPrice(totalIncome)}`;
-        }
-        if (totalOrdersEl) {
-            totalOrdersEl.textContent = totalOrders;
-        }
-        
-        updateRevenueChart(data.revenue);
-        updateServicesChart(data.services);
-        updateTransactionsList(data.transactions);
-        updateDateRangeText();
-    } catch (error) {
-        console.error('Error loading sample data:', error);
-    }
-}
-
-// ===== CHART UPDATE FUNCTIONS =====
-
-// Update revenue chart
-function updateRevenueChart(revenueData) {
-    try {
-        if (revenueChart && revenueData) {
-            revenueChart.data.datasets[0].data = revenueData;
-            revenueChart.update('none');
-        }
-    } catch (error) {
-        console.error('Error updating revenue chart:', error);
-    }
-}
-
-// Update services chart
-function updateServicesChart(servicesData) {
-    try {
-        if (servicesChart && servicesData) {
-            servicesChart.data.labels = Object.keys(servicesData);
-            servicesChart.data.datasets[0].data = Object.values(servicesData);
-            servicesChart.update('none');
-        }
-    } catch (error) {
-        console.error('Error updating services chart:', error);
-    }
-}
-
-// Update transactions list (untuk sample data)
-function updateTransactionsList(transactions) {
-    try {
-        const container = document.getElementById('transactionsList');
-        if (!container) return;
-        
-        if (transactions.length === 0) {
-            container.innerHTML = `
-                <div class="p-4 text-center text-gray-500">
-                    <i class="fas fa-receipt text-2xl mb-2"></i>
-                    <p>Tidak ada transaksi</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = transactions.map(transaction => `
-            <div class="p-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-receipt text-blue-600"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium text-gray-800">${transaction.customer}</p>
-                        <p class="text-sm text-gray-500">${transaction.service}</p>
-                        <p class="text-xs text-gray-400">${transaction.date}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="font-semibold text-gray-800">Rp ${formatPrice(transaction.amount)}</p>
-                    <span class="inline-block px-2 py-1 bg-green-100 text-green-600 text-xs rounded-full">
-                        Selesai
-                    </span>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error updating transactions list:', error);
-    }
-}
-
-// ===== DATE RANGE FUNCTIONS =====
-
-// Date range functions
-function getCurrentWeekRange() {
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - now.getDay());
-    
-    const end = new Date(now);
-    end.setDate(now.getDate() + (6 - now.getDay()));
-    
-    return { start, end };
-}
-
-function updateDateRangeText() {
-    try {
-        const rangeText = document.getElementById('dateRangeText');
+    updateDateRangeDisplay(dateRange) {
+        const rangeText = document.getElementById("dateRangeText");
         if (!rangeText) return;
-        
-        const { start, end } = currentDateRange;
-        
-        if (currentPeriod === 'week') {
-            rangeText.textContent = 'Minggu Ini';
-        } else if (currentPeriod === 'month') {
-            rangeText.textContent = 'Bulan Ini';
-        } else if (currentPeriod === 'quarter') {
-            rangeText.textContent = '3 Bulan Ini';
+
+        if (this.currentPeriod === "week") {
+            rangeText.textContent = "Minggu Ini";
+        } else if (this.currentPeriod === "month") {
+            rangeText.textContent = "Bulan Ini";
+        } else if (this.currentPeriod === "quarter") {
+            rangeText.textContent = "3 Bulan Ini";
         } else {
-            rangeText.textContent = `${formatDate(start)} - ${formatDate(end)}`;
+            const start = new Date(dateRange.start);
+            const end = new Date(dateRange.end);
+            rangeText.textContent = `${this.formatDateDisplay(
+                start
+            )} - ${this.formatDateDisplay(end)}`;
         }
-    } catch (error) {
-        console.error('Error updating date range text:', error);
     }
-}
 
-function formatDate(date) {
-    if (!(date instanceof Date) || isNaN(date)) {
-        return 'Invalid Date';
+    // Date Range Functions
+    getCurrentWeekRange() {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(now.getDate() - now.getDay());
+
+        const end = new Date(now);
+        end.setDate(now.getDate() + (6 - now.getDay()));
+
+        return { start, end };
     }
-    return date.toLocaleDateString('id-ID', { 
-        day: 'numeric', 
-        month: 'short' 
-    });
-}
 
-// Period navigation
-function navigatePeriod(direction) {
-    return function() {
+    selectQuickDate(period) {
+        const now = new Date();
+        let start, end;
+
+        switch (period) {
+            case "today":
+                start = end = new Date(now);
+                this.currentPeriod = "custom";
+                break;
+            case "week":
+                start = new Date(now);
+                start.setDate(now.getDate() - now.getDay());
+                end = new Date(now);
+                end.setDate(now.getDate() + (6 - now.getDay()));
+                this.currentPeriod = "week";
+                break;
+            case "month":
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                this.currentPeriod = "month";
+                break;
+            case "last_month":
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0);
+                this.currentPeriod = "custom";
+                break;
+        }
+
+        this.currentDateRange = { start, end };
+        this.loadReportData();
+        this.closeModal("dateModal");
+    }
+
+    applyCustomDateRange() {
+        const startInput = document.getElementById("customStartDate");
+        const endInput = document.getElementById("customEndDate");
+
+        if (!startInput?.value || !endInput?.value) {
+            this.showError("Harap pilih tanggal mulai dan tanggal akhir");
+            return;
+        }
+
+        const startDate = new Date(startInput.value);
+        const endDate = new Date(endInput.value);
+
+        if (startDate > endDate) {
+            this.showError("Tanggal mulai tidak boleh setelah tanggal akhir");
+            return;
+        }
+
+        this.currentDateRange = { start: startDate, end: endDate };
+        this.currentPeriod = "custom";
+        this.loadReportData();
+        this.closeModal("dateModal");
+    }
+
+    navigatePeriod(direction) {
+        const { start, end } = this.currentDateRange;
+        const diffTime = end - start;
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        if (direction === "prev") {
+            start.setDate(start.getDate() - diffDays - 1);
+            end.setDate(end.getDate() - diffDays - 1);
+        } else {
+            start.setDate(start.getDate() + diffDays + 1);
+            end.setDate(end.getDate() + diffDays + 1);
+        }
+
+        this.loadReportData();
+    }
+
+    // Export Function - PERBAIKAN 5: Update URL ke API route
+    // Export Function - PERBAIKAN: Handle semua format export
+    async exportReport(format) {
         try {
-            const { start, end } = currentDateRange;
-            
-            if (currentPeriod === 'week') {
-                start.setDate(start.getDate() + (7 * direction));
-                end.setDate(end.getDate() + (7 * direction));
-            } else if (currentPeriod === 'month') {
-                start.setMonth(start.getMonth() + direction);
-                end.setMonth(end.getMonth() + direction);
-            } else if (currentPeriod === 'quarter') {
-                start.setMonth(start.getMonth() + (3 * direction));
-                end.setMonth(end.getMonth() + (3 * direction));
+            this.showLoading();
+
+            const formData = new FormData();
+            formData.append("period", this.currentPeriod);
+            formData.append("format", format);
+
+            if (
+                this.currentPeriod === "custom" &&
+                this.currentDateRange.start &&
+                this.currentDateRange.end
+            ) {
+                formData.append(
+                    "start_date",
+                    this.formatDateForAPI(this.currentDateRange.start)
+                );
+                formData.append(
+                    "end_date",
+                    this.formatDateForAPI(this.currentDateRange.end)
+                );
             }
-            
-            loadReportDataFromAPI();
+
+            // PERBAIKAN: Ganti URL ke API route
+            const response = await fetch("/api/reports/export", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRF-TOKEN": this.getCsrfToken(),
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            });
+
+            if (response.ok) {
+                // PERBAIKAN: Handle semua format file download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+
+                // Tentukan nama file berdasarkan format
+                const timestamp = new Date().toISOString().split("T")[0];
+                let filename = `laporan-keuangan-${timestamp}`;
+
+                switch (format) {
+                    case "csv":
+                        filename += ".csv";
+                        break;
+                    case "pdf":
+                        filename += ".pdf";
+                        break;
+                    case "excel":
+                        filename += ".xlsx";
+                        break;
+                    default:
+                        filename += ".csv";
+                }
+
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                this.showToast("Laporan berhasil diexport");
+            } else {
+                // Handle error response
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Export gagal");
+            }
         } catch (error) {
-            console.error('Error navigating period:', error);
+            console.error("Error exporting report:", error);
+            this.showError("Gagal mengekspor laporan: " + error.message);
+        } finally {
+            this.hideLoading();
+            this.closeModal("exportModal");
         }
-    };
-}
+    }
 
-// ===== EXPORT FUNCTIONS =====
+    // Utility Functions
+    mapPeriodType(periodText) {
+        const periodMap = {
+            minggu: "week",
+            bulan: "month",
+            "3 bulan": "quarter",
+            custom: "custom",
+        };
+        return periodMap[periodText] || "week";
+    }
 
-// Export via API
-async function exportReport(format) {
-    try {
-        showLoading();
-        
-        const formData = new FormData();
-        formData.append('period', currentPeriod);
-        formData.append('format', format);
-        
-        if (currentPeriod === 'custom' && currentDateRange.start && currentDateRange.end) {
-            formData.append('start_date', currentDateRange.start.toISOString().split('T')[0]);
-            formData.append('end_date', currentDateRange.end.toISOString().split('T')[0]);
-        }
+    formatPrice(price) {
+        return new Intl.NumberFormat("id-ID").format(price);
+    }
 
-        const response = await fetch('/api/reports/export', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': getCsrfToken()
-            }
+    formatDateForAPI(date) {
+        return date.toISOString().split("T")[0];
+    }
+
+    formatDateDisplay(date) {
+        return date.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
         });
+    }
 
-        if (response.ok) {
-            // Handle CSV download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `laporan-keuangan-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            showToast('Laporan berhasil diexport');
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Export gagal');
+    // PERBAIKAN 7: Update status translation sesuai dengan database
+    translateStatus(status) {
+        const statusMap = {
+            new: "Baru",
+            process: "Diproses",
+            ready: "Siap Diambil",
+            done: "Selesai",
+            cancelled: "Dibatalkan",
+        };
+        return statusMap[status] || status;
+    }
+
+    translatePaymentStatus(paymentStatus) {
+        const translations = {
+            pending: "Belum Bayar",
+            paid: "Lunas",
+            partial: "DP",
+            overpaid: "Kelebihan",
+        };
+        return translations[paymentStatus] || paymentStatus;
+    }
+
+    getStatusBadgeClass(paymentStatus) {
+        const classes = {
+            paid: "bg-green-100 text-green-800",
+            pending: "bg-yellow-100 text-yellow-800",
+            partial: "bg-blue-100 text-blue-800",
+        };
+        return classes[paymentStatus] || "bg-gray-100 text-gray-800";
+    }
+
+    // PERBAIKAN 8: Update status color sesuai dengan database
+    getStatusColor(status) {
+        const colors = {
+            done: "text-green-600",
+            ready: "text-green-600",
+            process: "text-orange-600",
+            new: "text-yellow-600",
+            cancelled: "text-red-600",
+        };
+        return colors[status] || "text-gray-600";
+    }
+
+    generateChartColors(count) {
+        const colors = [
+            "#3b82f6",
+            "#10b981",
+            "#f59e0b",
+            "#8b5cf6",
+            "#ef4444",
+            "#06b6d4",
+            "#84cc16",
+            "#f97316",
+        ];
+        return colors.slice(0, count);
+    }
+
+    getCsrfToken() {
+        return (
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content") || ""
+        );
+    }
+
+    showLoading() {
+        const transactionsList = document.getElementById("transactionsList");
+        if (transactionsList) {
+            transactionsList.innerHTML = `
+                <div class="p-4 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p>Memuat data transaksi...</p>
+                </div>
+            `;
         }
-        
-    } catch (error) {
-        console.error('Error exporting report:', error);
-        showError('Gagal mengekspor laporan: ' + error.message);
-        
-        // Fallback to client-side export
-        if (format === 'csv') {
-            exportCSVClientSide();
-        } else {
-            alert('Fitur export PDF akan segera hadir!');
+    }
+
+    hideLoading() {
+        // Loading state akan diganti dengan data actual
+    }
+
+    showError(message) {
+        const transactionsList = document.getElementById("transactionsList");
+        if (transactionsList) {
+            transactionsList.innerHTML = `
+                <div class="p-4 text-center text-red-500">
+                    <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                    <p>${message}</p>
+                    <button onclick="reportsPage.loadReportData()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+                        Coba Lagi
+                    </button>
+                </div>
+            `;
         }
-    } finally {
-        hideLoading();
-        closeExportModal();
+    }
+
+    showToast(message) {
+        const toast = document.createElement("div");
+        toast.className =
+            "fixed top-4 right-4 px-6 py-3 rounded-lg text-white font-medium z-50 bg-green-500";
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    closeModal(modalId) {
+        document.getElementById(modalId).classList.add("hidden");
     }
 }
 
-// Client-side CSV export fallback
-function exportCSVClientSide() {
-    try {
-        const data = sampleData[currentPeriod] || sampleData.week;
-        const totalIncome = data.revenue.reduce((sum, val) => sum + val, 0);
-        
-        let content = `LAPORAN LAUNDRY\n`;
-        content += `Periode: ${document.getElementById('dateRangeText').textContent}\n`;
-        content += `Total Pendapatan: Rp ${formatPrice(totalIncome)}\n`;
-        content += `Total Pesanan: ${data.transactions.length}\n\n`;
-        content += `Detail Transaksi:\n`;
-        
-        data.transactions.forEach(transaction => {
-            content += `${transaction.date} - ${transaction.customer} - ${transaction.service} - Rp ${formatPrice(transaction.amount)}\n`;
-        });
-        
-        const blob = new Blob([content], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `laporan-laundry-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Error in client-side export:', error);
-        showError('Gagal melakukan export');
-    }
-}
-
-// ===== UTILITY FUNCTIONS =====
-
-// Helper function untuk CSRF token
-function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-}
-
-// Format price to Indonesian format
-function formatPrice(price) {
-    return new Intl.NumberFormat('id-ID').format(price);
-}
-
-// Translate status to Indonesian
-function translateStatus(status) {
-    const statusMap = {
-        'completed': 'Selesai',
-        'ready': 'Selesai',
-        'picked_up': 'Diambil',
-        'new': 'Baru',
-        'washing': 'Dicuci',
-        'ironing': 'Disetrika'
-    };
-    return statusMap[status] || status;
-}
-
-// Show loading indicator
-function showLoading() {
-    // Implement loading indicator jika diperlukan
-    console.log('Loading report data...');
-}
-
-// Hide loading indicator
-function hideLoading() {
-    // Hide loading indicator jika diperlukan
-    console.log('Report data loaded');
-}
-
-// Show error message
-function showError(message) {
-    // Bisa diganti dengan toast notification yang lebih baik
-    console.error('Error:', message);
-    alert(message);
-}
-
-// Show toast notification
-function showToast(message) {
-    // Simple toast implementation
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-4 left-4 right-4 bg-green-500 text-white p-3 rounded-lg shadow-lg text-center z-50';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        document.body.removeChild(toast);
-    }, 3000);
-}
-
-// Close export modal
-function closeExportModal() {
-    const exportModal = document.getElementById('exportModal');
-    if (exportModal) {
-        exportModal.classList.add('hidden');
-    }
-}
-
-// Close date modal
-function closeDateModal() {
-    const dateModal = document.getElementById('dateModal');
-    if (dateModal) {
-        dateModal.classList.add('hidden');
-    }
-}
-
-// Apply date range from modal (jika menggunakan date picker)
-function applyDateRange() {
-    // Implement date range selection dari modal
-    closeDateModal();
-    loadReportDataFromAPI();
-}
+// Initialize Reports Page
+document.addEventListener("DOMContentLoaded", function () {
+    window.reportsPage = new ReportsPage();
+});
