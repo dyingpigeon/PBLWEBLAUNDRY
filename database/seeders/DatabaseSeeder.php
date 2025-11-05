@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\ServiceItem;
-use App\Models\ServiceCategory;
+use App\Models\ServiceType;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Carbon\Carbon;
@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
         DB::table('transactions')->truncate();
         DB::table('service_items')->truncate();
         DB::table('services')->truncate();
-        DB::table('service_categories')->truncate();
+        DB::table('service_types')->truncate();
         DB::table('customers')->truncate();
         DB::table('users')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
@@ -59,102 +59,109 @@ class DatabaseSeeder extends Seeder
             'address' => 'Jl. Gatot Subroto No. 89'
         ]);
 
-        // Create service categories
-        $categories = [
-            ['name' => 'Pakaian', 'icon' => 'fas fa-tshirt', 'sort_order' => 1],
-            ['name' => 'Sepatu', 'icon' => 'fas fa-shoe-prints', 'sort_order' => 2],
-            ['name' => 'Sprei & Selimut', 'icon' => 'fas fa-bed', 'sort_order' => 3],
-            ['name' => 'Boneka & Mainan', 'icon' => 'fas fa-gamepad', 'sort_order' => 4],
-            ['name' => 'Jas & Formal', 'icon' => 'fas fa-user-tie', 'sort_order' => 5],
-        ];
+        // Create service types (sesuai migration service_types)
+        $expressType = ServiceType::create([
+            'name' => 'Express',
+            'icon' => 'fas fa-bolt',
+            'sort_order' => 1,
+            'active' => true
+        ]);
 
-        foreach ($categories as $category) {
-            ServiceCategory::create($category);
-        }
+        $nonExpressType = ServiceType::create([
+            'name' => 'Non Express',
+            'icon' => 'fas fa-clock',
+            'sort_order' => 2,
+            'active' => true
+        ]);
 
-        // Create sample services dengan type yang benar
+        // Create sample services sesuai migration
         $cuciBiasa = Service::create([
             'name' => 'Cuci Biasa',
             'type' => 'kiloan',
-            'category' => 'regular',
+            'description' => 'Layanan cuci biasa untuk pakaian sehari-hari',
             'icon' => 'fas fa-soap',
-            'color' => 'blue-500'
+            'color' => 'blue-500',
+            'active' => true
         ]);
 
         $cuciSetrika = Service::create([
             'name' => 'Cuci Setrika',
             'type' => 'kiloan',
-            'category' => 'regular',
+            'description' => 'Layanan cuci dan setrika lengkap',
             'icon' => 'fas fa-tshirt',
-            'color' => 'green-500'
+            'color' => 'green-500',
+            'active' => true
         ]);
 
         $setrikaSaja = Service::create([
             'name' => 'Setrika Saja',
             'type' => 'kiloan',
-            'category' => 'regular',
+            'description' => 'Layanan setrika saja untuk pakaian yang sudah dicuci',
             'icon' => 'fas fa-fire',
-            'color' => 'orange-500'
+            'color' => 'orange-500',
+            'active' => true
         ]);
 
         $laundrySatuan = Service::create([
             'name' => 'Laundry Satuan',
             'type' => 'satuan',
-            'category' => 'special',
+            'description' => 'Layanan laundry per item dengan penanganan khusus',
             'icon' => 'fas fa-tshirt',
-            'color' => 'purple-500'
+            'color' => 'purple-500',
+            'active' => true
         ]);
 
-        // Create service items dengan category_id yang benar
+        // Create service items sesuai migration (tanpa category_id)
         // Service Kiloan - Cuci Biasa
         ServiceItem::create([
             'service_id' => $cuciBiasa->id,
-            'category_id' => 1, // Pakaian
-            'name' => 'Pakaian', 
+            'name' => 'Pakaian Biasa', 
             'price' => 5000,
             'unit' => 'kg',
-            'estimation_time' => 24
+            'estimation_time' => 24,
+            'description' => 'Layanan cuci biasa untuk pakaian sehari-hari'
         ]);
 
         // Service Kiloan - Cuci Setrika
         ServiceItem::create([
             'service_id' => $cuciSetrika->id,
-            'category_id' => 1, // Pakaian
-            'name' => 'Pakaian',
+            'name' => 'Pakaian Cuci Setrika',
             'price' => 8000,
             'unit' => 'kg',
-            'estimation_time' => 24
+            'estimation_time' => 24,
+            'description' => 'Layanan cuci dan setrika lengkap'
         ]);
 
         // Service Kiloan - Setrika Saja
         ServiceItem::create([
             'service_id' => $setrikaSaja->id,
-            'category_id' => 1, // Pakaian
-            'name' => 'Pakaian',
+            'name' => 'Pakaian Setrika Saja',
             'price' => 4000,
             'unit' => 'kg',
-            'estimation_time' => 24
+            'estimation_time' => 24,
+            'description' => 'Layanan setrika saja'
         ]);
 
-        // Service Satuan - berbagai kategori
+        // Service Satuan - berbagai jenis item
         $satuanItems = [
             // Pakaian
-            ['service_id' => $laundrySatuan->id, 'category_id' => 1, 'name' => 'Kemeja', 'price' => 10000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 1, 'name' => 'Celana Panjang', 'price' => 12000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 1, 'name' => 'Jaket', 'price' => 15000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 1, 'name' => 'Kaos', 'price' => 8000, 'unit' => 'pcs'],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Kemeja', 'price' => 10000, 'unit' => 'pcs', 'estimation_time' => 24],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Celana Panjang', 'price' => 12000, 'unit' => 'pcs', 'estimation_time' => 24],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Jaket', 'price' => 15000, 'unit' => 'pcs', 'estimation_time' => 24],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Kaos', 'price' => 8000, 'unit' => 'pcs', 'estimation_time' => 24],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Celana Pendek', 'price' => 7000, 'unit' => 'pcs', 'estimation_time' => 24],
             // Sepatu
-            ['service_id' => $laundrySatuan->id, 'category_id' => 2, 'name' => 'Sepatu Sneakers', 'price' => 25000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 2, 'name' => 'Sepatu Kulit', 'price' => 35000, 'unit' => 'pcs'],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Sepatu Sneakers', 'price' => 25000, 'unit' => 'pcs', 'estimation_time' => 48],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Sepatu Kulit', 'price' => 35000, 'unit' => 'pcs', 'estimation_time' => 48],
             // Sprei & Selimut
-            ['service_id' => $laundrySatuan->id, 'category_id' => 3, 'name' => 'Sprei Single', 'price' => 20000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 3, 'name' => 'Sprei Double', 'price' => 25000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 3, 'name' => 'Selimut', 'price' => 30000, 'unit' => 'pcs'],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Sprei Single', 'price' => 20000, 'unit' => 'pcs', 'estimation_time' => 36],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Sprei Double', 'price' => 25000, 'unit' => 'pcs', 'estimation_time' => 36],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Selimut', 'price' => 30000, 'unit' => 'pcs', 'estimation_time' => 36],
             // Boneka
-            ['service_id' => $laundrySatuan->id, 'category_id' => 4, 'name' => 'Boneka Kecil', 'price' => 15000, 'unit' => 'pcs'],
-            ['service_id' => $laundrySatuan->id, 'category_id' => 4, 'name' => 'Boneka Besar', 'price' => 25000, 'unit' => 'pcs'],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Boneka Kecil', 'price' => 15000, 'unit' => 'pcs', 'estimation_time' => 36],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Boneka Besar', 'price' => 25000, 'unit' => 'pcs', 'estimation_time' => 48],
             // Jas
-            ['service_id' => $laundrySatuan->id, 'category_id' => 5, 'name' => 'Jas Formal', 'price' => 45000, 'unit' => 'pcs'],
+            ['service_id' => $laundrySatuan->id, 'name' => 'Jas Formal', 'price' => 45000, 'unit' => 'pcs', 'estimation_time' => 48],
         ];
 
         foreach ($satuanItems as $item) {
@@ -172,6 +179,7 @@ class DatabaseSeeder extends Seeder
             'service_id' => $cuciSetrika->id,
             'total_amount' => 40000,
             'paid_amount' => 50000,
+            'change_amount' => 10000,
             'weight' => 5.0, // 5 kg
             'payment_type' => 'now',
             'status' => 'process',
@@ -190,6 +198,7 @@ class DatabaseSeeder extends Seeder
             'service_id' => $setrikaSaja->id,
             'total_amount' => 20000,
             'paid_amount' => 0,
+            'change_amount' => 0,
             'weight' => 5.0, // 5 kg
             'payment_type' => 'later',
             'status' => 'new',
@@ -208,6 +217,7 @@ class DatabaseSeeder extends Seeder
             'service_id' => $laundrySatuan->id,
             'total_amount' => 87000,
             'paid_amount' => 50000,
+            'change_amount' => 0,
             'weight' => null, // tidak ada weight untuk satuan
             'payment_type' => 'now',
             'status' => 'new',
@@ -226,6 +236,7 @@ class DatabaseSeeder extends Seeder
             'service_id' => $laundrySatuan->id,
             'total_amount' => 36000,
             'paid_amount' => 36000,
+            'change_amount' => 0,
             'weight' => null,
             'payment_type' => 'now',
             'status' => 'ready',
@@ -241,7 +252,7 @@ class DatabaseSeeder extends Seeder
         TransactionItem::create([
             'transaction_id' => $transaction1->id,
             'service_item_id' => 2, // Pakaian Cuci Setrika
-            'item_name' => 'Pakaian',
+            'item_name' => 'Pakaian Cuci Setrika',
             'quantity' => 5.0,
             'unit_price' => 8000,
             'subtotal' => 40000,
@@ -253,7 +264,7 @@ class DatabaseSeeder extends Seeder
         TransactionItem::create([
             'transaction_id' => $transaction2->id,
             'service_item_id' => 3, // Pakaian Setrika Saja
-            'item_name' => 'Pakaian',
+            'item_name' => 'Pakaian Setrika Saja',
             'quantity' => 5.0,
             'unit_price' => 4000,
             'subtotal' => 20000,
@@ -264,7 +275,7 @@ class DatabaseSeeder extends Seeder
         // Transaction 3 Items (Satuan - Mix)
         TransactionItem::create([
             'transaction_id' => $transaction3->id,
-            'service_item_id' => 5, // Kemeja
+            'service_item_id' => 4, // Kemeja
             'item_name' => 'Kemeja',
             'quantity' => 2,
             'unit_price' => 10000,
@@ -275,7 +286,7 @@ class DatabaseSeeder extends Seeder
 
         TransactionItem::create([
             'transaction_id' => $transaction3->id,
-            'service_item_id' => 6, // Celana Panjang
+            'service_item_id' => 5, // Celana Panjang
             'item_name' => 'Celana Panjang',
             'quantity' => 1,
             'unit_price' => 12000,
@@ -297,7 +308,7 @@ class DatabaseSeeder extends Seeder
 
         TransactionItem::create([
             'transaction_id' => $transaction3->id,
-            'service_item_id' => 15, // Jas Formal
+            'service_item_id' => 16, // Jas Formal
             'item_name' => 'Jas Formal',
             'quantity' => 1,
             'unit_price' => 30000,
@@ -309,7 +320,7 @@ class DatabaseSeeder extends Seeder
         // Transaction 4 Items (Satuan - Pakaian)
         TransactionItem::create([
             'transaction_id' => $transaction4->id,
-            'service_item_id' => 5, // Kemeja
+            'service_item_id' => 4, // Kemeja
             'item_name' => 'Kemeja',
             'quantity' => 2,
             'unit_price' => 10000,
@@ -320,7 +331,7 @@ class DatabaseSeeder extends Seeder
 
         TransactionItem::create([
             'transaction_id' => $transaction4->id,
-            'service_item_id' => 8, // Kaos
+            'service_item_id' => 7, // Kaos
             'item_name' => 'Kaos',
             'quantity' => 2,
             'unit_price' => 8000,

@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('service_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->foreignId('category_id')->nullable()->constrained('service_categories')->onDelete('cascade');
+            // $table->foreignId('category_id')->nullable()->constrained('service_categories')->onDelete('cascade');
             $table->string('name'); // Baju, Celana, Jaket, Jas, Sepatu, Boneka, dll
             $table->decimal('price', 12, 2);
             $table->string('unit')->default('kg'); // kg, pcs, set, dll

@@ -13,31 +13,19 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Layanan</label>
-                    <select id="editServiceType"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                    <select id="editServiceType" disabled
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 bg-gray-100"
                         required>
                         <option value="kiloan">Laundry Kiloan</option>
                         <option value="satuan">Laundry Satuan</option>
-                        <option value="khusus">Layanan Khusus</option>
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">Tipe layanan tidak dapat diubah setelah dibuat</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nama Layanan</label>
                     <input type="text" id="editServiceName"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                         required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                    <select id="editServiceCategory"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                        required>
-                        <option value="Cuci">Cuci</option>
-                        <option value="Setrika">Setrika</option>
-                        <option value="Dry Clean">Dry Clean</option>
-                        <option value="Khusus">Layanan Khusus</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
@@ -72,6 +60,17 @@
                             <option value="red-500">Merah</option>
                             <option value="pink-500">Pink</option>
                         </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <div class="flex items-center space-x-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="editServiceActive" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
+                            </div>
+                        </label>
+                        <span class="text-sm text-gray-600" id="editServiceStatusText">Aktif</span>
                     </div>
                 </div>
             </div>

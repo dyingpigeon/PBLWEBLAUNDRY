@@ -10,9 +10,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('service_categories', function (Blueprint $table) {
+        Schema::create('service_types', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Pakaian, Sepatu, Sprei, Boneka, Jas, dll
+            $table->string('name'); // Express, Non Express
             $table->string('icon')->nullable();
             $table->integer('sort_order')->default(0);
             $table->boolean('active')->default(true);

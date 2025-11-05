@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name'); // Cuci Setrika, Cuci Biasa, Setrika Saja, Dry Clean, dll
             $table->string('type')->default('kiloan'); // kiloan, satuan, khusus
-            $table->string('category')->default('general');
+            // $table->string('category')->default('general');
             $table->text('description')->nullable();
             $table->string('icon')->default('fas fa-tshirt');
             $table->string('color')->default('blue-500');

@@ -1,8 +1,9 @@
-// servicesPage.js - COMPLETE VERSION FOR NEW SERVICE SYSTEM
+// servicesPage.js - UPDATED VERSION FOR NEW SERVICE SYSTEM
 // Handle halaman layanan dan harga dengan fitur lengkap
 
 let currentCategory = "all";
 let priceItemCount = 1;
+let currentServiceId = null;
 let currentServiceType = "kiloan";
 
 // ===== INITIALIZATION FUNCTIONS =====
@@ -71,12 +72,23 @@ function setupEventListeners() {
         });
     }
 
+    // Add item form submission
+    const addItemForm = document.getElementById("addItemForm");
+    if (addItemForm) {
+        addItemForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            handleAddItem();
+        });
+    }
+
     // Close modals when clicking outside
     document.addEventListener("click", function (e) {
         if (
-            e.target.id === "addServiceModal" ||
+            e.target.id === "serviceAddModal" ||
             e.target.id === "editItemModal" ||
-            e.target.id === "editServiceModal"
+            e.target.id === "editServiceModal" ||
+            e.target.id === "serviceDetailModal" ||
+            e.target.id === "addItemModal"
         ) {
             closeAllModals();
         }
@@ -93,44 +105,28 @@ function setupEventListeners() {
 // ===== MODAL MANAGEMENT FUNCTIONS =====
 
 // Show Add Service Modal
-function showAddServiceModal() {
-    const modal = document.getElementById("addServiceModal");
-    if (modal) {
-        modal.classList.remove("hidden");
-        document.getElementById("serviceName").focus();
-    }
-}
+// function showAddServiceModal() {
+//     const modal = document.getElementById("serviceAddModal");
+//     if (modal) {
+//         modal.classList.remove("hidden");
+//         document.getElementById("serviceName").focus();
+//     }
+// }
 
-// Close Add Service Modal
-function closeAddServiceModal() {
-    const modal = document.getElementById("addServiceModal");
-    if (modal) {
-        modal.classList.add("hidden");
-        document.getElementById("addServiceForm").reset();
-        resetPriceItems();
-    }
-}
+// // Close Add Service Modal
+// function closeAddServiceModal() {
+//     const modal = document.getElementById("serviceAddModal");
+//     if (modal) {
+//         modal.classList.add("hidden");
+//         document.getElementById("addServiceForm").reset();
+//         resetPriceItems();
+//     }
+// }
 
 // Show Edit Item Modal
-function editServiceItem(
-    serviceId,
-    itemId,
-    itemName,
-    itemPrice,
-    itemUnit = "kg",
-    itemEstimation = 24
-) {
-    document.getElementById("editItemServiceId").value = serviceId;
-    document.getElementById("editItemId").value = itemId;
-    document.getElementById("editItemName").value = itemName;
-    document.getElementById("editItemPrice").value = itemPrice;
-    document.getElementById("editItemUnit").value = itemUnit;
-    document.getElementById("editItemEstimation").value = itemEstimation;
-
-    const modal = document.getElementById("editItemModal");
-    if (modal) {
-        modal.classList.remove("hidden");
-    }
+function showEditItemModal(itemId, serviceId) {
+    // Load item data first
+    loadItemData(itemId, serviceId);
 }
 
 // Close Edit Item Modal
@@ -142,18 +138,8 @@ function closeEditItemModal() {
 }
 
 // Show Edit Service Modal
-function editService(serviceId) {
-    // Coba load dari API dulu
+function showEditServiceModal(serviceId) {
     loadServiceData(serviceId);
-
-    // Fallback: jika setelah 3 detik masih loading, gunakan fallback method
-    setTimeout(() => {
-        const modal = document.getElementById("editServiceModal");
-        if (!modal || modal.classList.contains("hidden")) {
-            console.log("Using fallback method for service data");
-            loadServiceDataFallback(serviceId);
-        }
-    }, 3000);
 }
 
 // Close Edit Service Modal
@@ -164,9 +150,48 @@ function closeEditServiceModal() {
     }
 }
 
+// Show Service Detail Modal
+function showServiceDetail(serviceId) {
+    loadServiceDetail(serviceId);
+}
+
+// Close Service Detail Modal
+function closeServiceDetailModal() {
+    const modal = document.getElementById("serviceDetailModal");
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+// Show Add Item Modal
+function showAddItemModal() {
+    const modal = document.getElementById("addItemModal");
+    if (modal) {
+        modal.classList.remove("hidden");
+        document.getElementById("addItemServiceId").value =
+            currentServiceId || "";
+        document.getElementById("addItemName").focus();
+    }
+}
+
+// Close Add Item Modal
+function closeAddItemModal() {
+    const modal = document.getElementById("addItemModal");
+    if (modal) {
+        modal.classList.add("hidden");
+        document.getElementById("addItemForm").reset();
+    }
+}
+
 // Close all modals
 function closeAllModals() {
-    const modals = ["addServiceModal", "editItemModal", "editServiceModal"];
+    const modals = [
+        "serviceAddModal",
+        "editItemModal",
+        "editServiceModal",
+        "serviceDetailModal",
+        "addItemModal",
+    ];
     modals.forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -198,10 +223,6 @@ function updateItemsSectionByType(type) {
             title.textContent = "Item Satuan";
             resetPriceItemsToSatuan();
             break;
-        case "khusus":
-            title.textContent = "Layanan Khusus";
-            resetPriceItemsToKhusus();
-            break;
     }
 }
 
@@ -226,17 +247,14 @@ function updateIconSuggestions(type) {
             { value: "fas fa-tshirt", text: "Shirt" },
             { value: "fas fa-socks", text: "Socks" },
         ],
-        khusus: [
-            { value: "fas fa-star", text: "Star" },
-            { value: "fas fa-gem", text: "Gem" },
-            { value: "fas fa-crown", text: "Crown" },
-        ],
     };
 
     const defaultIcons = [
         { value: "fas fa-soap", text: "Soap" },
         { value: "fas fa-fire", text: "Fire" },
         { value: "fas fa-wind", text: "Wind" },
+        { value: "fas fa-star", text: "Star" },
+        { value: "fas fa-gem", text: "Gem" },
     ];
 
     const typeIcons = icons[type] || [];
@@ -295,6 +313,12 @@ function addPriceItem(type = currentServiceType) {
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" min="1" required>
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Deskripsi (Opsional)</label>
+                        <textarea name="items[${itemId}][description]" rows="2"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500"
+                            placeholder="Deskripsi item..."></textarea>
+                    </div>
                     ${
                         priceItemCount > 1
                             ? `<button type="button" onclick="removePriceItem(this)" class="mt-2 w-full py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors">Hapus Item</button>`
@@ -332,42 +356,11 @@ function addPriceItem(type = currentServiceType) {
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" min="1" required>
                         </div>
                     </div>
-                    ${
-                        priceItemCount > 1
-                            ? `<button type="button" onclick="removePriceItem(this)" class="mt-2 w-full py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors">Hapus Item</button>`
-                            : ""
-                    }
-                </div>
-            `;
-            break;
-
-        case "khusus":
-            itemHTML = `
-                <div class="price-item bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-600 mb-1">Nama Layanan Khusus</label>
-                        <input type="text" name="items[${itemId}][name]" placeholder="Contoh: Jas, Boneka, Selimut" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Harga</label>
-                            <input type="number" name="items[${itemId}][price]" placeholder="0" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" min="0" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Unit</label>
-                            <select name="items[${itemId}][unit]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" required>
-                                <option value="pcs">pcs</option>
-                                <option value="kg">kg</option>
-                                <option value="set">set</option>
-                            </select>
-                        </div>
-                    </div>
                     <div>
-                        <label class="block text-xs text-gray-600 mb-1">Estimasi Pengerjaan (jam)</label>
-                        <input type="number" name="items[${itemId}][estimation_time]" value="48" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500" min="1" required>
+                        <label class="block text-xs text-gray-600 mb-1">Deskripsi (Opsional)</label>
+                        <textarea name="items[${itemId}][description]" rows="2"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500"
+                            placeholder="Deskripsi item..."></textarea>
                     </div>
                     ${
                         priceItemCount > 1
@@ -442,16 +435,6 @@ function resetPriceItemsToSatuan() {
     }
 }
 
-// Reset items untuk khusus
-function resetPriceItemsToKhusus() {
-    const container = document.getElementById("priceItems");
-    if (container) {
-        container.innerHTML = "";
-        priceItemCount = 1;
-        addPriceItem("khusus");
-    }
-}
-
 // ===== SERVICE FILTERING FUNCTIONS =====
 
 // Filter services by category
@@ -462,7 +445,7 @@ function filterServices(category) {
     serviceCards.forEach((card) => {
         const cardCategory = card.getAttribute("data-category");
 
-        if (category === "all" || cardCategory.includes(category)) {
+        if (category === "all" || cardCategory === category) {
             card.style.display = "block";
             visibleCount++;
         } else {
@@ -471,25 +454,6 @@ function filterServices(category) {
     });
 
     // Show/hide empty state
-    updateEmptyState(visibleCount);
-}
-
-// Filter services by type
-function filterServicesByType(type) {
-    const serviceCards = document.querySelectorAll(".service-card");
-    let visibleCount = 0;
-
-    serviceCards.forEach((card) => {
-        const cardType = card.getAttribute("data-service-type");
-
-        if (type === "all" || cardType === type) {
-            card.style.display = "block";
-            visibleCount++;
-        } else {
-            card.style.display = "none";
-        }
-    });
-
     updateEmptyState(visibleCount);
 }
 
@@ -518,6 +482,9 @@ function updateEmptyState(visibleCount) {
 // ===== API INTEGRATION FUNCTIONS =====
 
 // Handle add service form submission
+// ===== FORM SUBMISSION HANDLERS =====
+
+// Handle add service form submission
 function handleAddService(event) {
     event.preventDefault();
 
@@ -530,7 +497,6 @@ function handleAddService(event) {
     const serviceData = {
         name: document.getElementById("serviceName").value,
         type: document.getElementById("serviceType").value,
-        category: document.getElementById("serviceCategory").value,
         description: document.getElementById("serviceDescription").value,
         icon: document.getElementById("serviceIcon").value,
         color: document.getElementById("serviceColor").value,
@@ -591,12 +557,13 @@ function handleAddService(event) {
 
 // Update service item
 function updateServiceItem() {
-    const serviceId = document.getElementById("editItemServiceId").value;
-    const itemId = document.getElementById("editItemId").value;
-    const name = document.getElementById("editItemName").value;
-    const price = document.getElementById("editItemPrice").value;
-    const unit = document.getElementById("editItemUnit").value;
-    const estimation = document.getElementById("editItemEstimation").value;
+    const serviceId = document.getElementById("editItemServiceId")?.value;
+    const itemId = document.getElementById("editItemId")?.value;
+    const name = document.getElementById("editItemName")?.value;
+    const price = document.getElementById("editItemPrice")?.value;
+    const unit = document.getElementById("editItemUnit")?.value;
+    const estimation = document.getElementById("editItemEstimation")?.value;
+    const description = document.getElementById("editItemDescription")?.value;
 
     if (!serviceId || !itemId || !name || !price || !unit || !estimation) {
         showError("Data tidak lengkap");
@@ -607,13 +574,18 @@ function updateServiceItem() {
     const submitBtn = document.querySelector(
         '#editItemForm button[type="submit"]'
     );
+    if (!submitBtn) {
+        showError("Form tidak ditemukan");
+        return;
+    }
+
     const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML =
         '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
     submitBtn.disabled = true;
 
     fetch(`/services/${serviceId}/items/${itemId}`, {
-        method: "PUT",
+        method: "POST",
         headers: {
             "Content-Type": "application/json",
             "X-CSRF-TOKEN": getCsrfToken(),
@@ -623,6 +595,7 @@ function updateServiceItem() {
             price: price,
             unit: unit,
             estimation_time: estimation,
+            description: description,
         }),
     })
         .then((response) => response.json())
@@ -647,6 +620,310 @@ function updateServiceItem() {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
         });
+}
+
+// Update service
+function updateService() {
+    const serviceId = document.getElementById("editServiceId")?.value;
+    const name = document.getElementById("editServiceName")?.value;
+    const description = document.getElementById(
+        "editServiceDescription"
+    )?.value;
+    const icon = document.getElementById("editServiceIcon")?.value;
+    const color = document.getElementById("editServiceColor")?.value;
+    const active = document.getElementById("editServiceActive")?.checked;
+
+    if (!serviceId || !name || !icon || !color) {
+        showError("Data tidak lengkap");
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.querySelector(
+        '#editServiceForm button[type="submit"]'
+    );
+    if (!submitBtn) {
+        showError("Form tidak ditemukan");
+        return;
+    }
+
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+    submitBtn.disabled = true;
+
+    fetch(`/services/${serviceId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            icon: icon,
+            color: color,
+            active: active,
+        }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.success) {
+                showToast("Service berhasil diupdate!", "success");
+                closeEditServiceModal();
+                // Reload page setelah delay singkat
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || "Gagal mengupdate service");
+            }
+        })
+        .catch((error) => {
+            console.error("Error:", error);
+            showError("Terjadi kesalahan saat mengupdate service");
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+}
+
+// Handle add item form submission
+function handleAddItem() {
+    const serviceId = document.getElementById("addItemServiceId")?.value;
+    const name = document.getElementById("addItemName")?.value;
+    const price = document.getElementById("addItemPrice")?.value;
+    const unit = document.getElementById("addItemUnit")?.value;
+    const estimation = document.getElementById("addItemEstimation")?.value;
+    const description = document.getElementById("addItemDescription")?.value;
+
+    if (!serviceId || !name || !price || !unit || !estimation) {
+        showError("Data tidak lengkap");
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.querySelector(
+        '#addItemForm button[type="submit"]'
+    );
+    if (!submitBtn) {
+        showError("Form tidak ditemukan");
+        return;
+    }
+
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin mr-2"></i>Menambahkan...';
+    submitBtn.disabled = true;
+
+    fetch(`/services/${serviceId}/items`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify({
+            name: name,
+            price: price,
+            unit: unit,
+            estimation_time: estimation,
+            description: description,
+        }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.success) {
+                showToast("Item berhasil ditambahkan!", "success");
+                closeAddItemModal();
+                // Reload page setelah delay singkat
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || "Gagal menambahkan item");
+            }
+        })
+        .catch((error) => {
+            console.error("Error:", error);
+            showError("Terjadi kesalahan saat menambahkan item");
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+}
+
+
+
+    // Service toggle functionality
+    document.querySelectorAll(".service-toggle").forEach((toggle) => {
+        toggle.addEventListener("change", function () {
+            const serviceId = this.getAttribute("data-service-id");
+            const isActive = this.checked;
+
+            toggleService(serviceId, isActive);
+        });
+    });
+
+    // Edit item form submission - dengan null check
+    const editItemForm = document.getElementById("editItemForm");
+    if (editItemForm) {
+        editItemForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            updateServiceItem();
+        });
+    } else {
+        console.warn("Edit item form not found");
+    }
+
+    // Add service form submission - dengan null check
+    const addServiceForm = document.getElementById("addServiceForm");
+    if (addServiceForm) {
+        addServiceForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            handleAddService(e);
+        });
+    } else {
+        console.warn("Add service form not found");
+    }
+
+    // Edit service form submission - dengan null check
+    const editServiceForm = document.getElementById("editServiceForm");
+    if (editServiceForm) {
+        editServiceForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            updateService();
+        });
+    } else {
+        console.warn("Edit service form not found");
+    }
+
+    // Add item form submission - dengan null check
+    const addItemForm = document.getElementById("addItemForm");
+    if (addItemForm) {
+        addItemForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            handleAddItem();
+        });
+    } else {
+        console.warn("Add item form not found");
+    }
+
+    // Close modals when clicking outside
+    document.addEventListener("click", function (e) {
+        if (
+            e.target.id === "serviceAddModal" ||
+            e.target.id === "editItemModal" ||
+            e.target.id === "editServiceModal" ||
+            e.target.id === "serviceDetailModal" ||
+            e.target.id === "addItemModal"
+        ) {
+            closeAllModals();
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            closeAllModals();
+        }
+    });
+
+// ===== UTILITY FUNCTIONS DENGAN SAFETY CHECK =====
+
+// Collect price items dengan data lengkap dan safety check
+function collectPriceItems() {
+    const items = [];
+    const priceItems = document.querySelectorAll(".price-item");
+
+    if (!priceItems || priceItems.length === 0) {
+        console.warn("No price items found");
+        return items;
+    }
+
+    priceItems.forEach((item, index) => {
+        const nameInput = item.querySelector('input[name*="[name]"]');
+        const priceInput = item.querySelector('input[name*="[price]"]');
+        const unitSelect = item.querySelector('select[name*="[unit]"]');
+        const estimationInput = item.querySelector(
+            'input[name*="[estimation_time]"]'
+        );
+        const descriptionInput = item.querySelector(
+            'textarea[name*="[description]"]'
+        );
+
+        if (nameInput && nameInput.value && priceInput && priceInput.value) {
+            items.push({
+                name: nameInput.value,
+                price: parseFloat(priceInput.value),
+                unit: unitSelect ? unitSelect.value : "kg",
+                estimation_time: estimationInput
+                    ? parseInt(estimationInput.value)
+                    : 24,
+                description: descriptionInput ? descriptionInput.value : null,
+            });
+        }
+    });
+
+    console.log("Collected items:", items);
+    return items;
+}
+
+// Validate service data based on type dengan safety check
+function validateServiceData(data) {
+    if (!data) {
+        showError("Data service tidak valid");
+        return false;
+    }
+
+    if (!data.type) {
+        showError("Tipe layanan harus dipilih");
+        return false;
+    }
+
+    if (data.type === "kiloan" && data.items.length > 1) {
+        showError("Layanan kiloan hanya boleh memiliki satu item harga");
+        return false;
+    }
+
+    if (!data.name || data.name.trim() === "") {
+        showError("Nama layanan harus diisi");
+        return false;
+    }
+
+    if (!data.icon || data.icon.trim() === "") {
+        showError("Icon harus dipilih");
+        return false;
+    }
+
+    if (!data.color || data.color.trim() === "") {
+        showError("Warna harus dipilih");
+        return false;
+    }
+
+    return true;
+}
+
+// Get CSRF token dengan safety check
+function getCsrfToken() {
+    const token = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+    if (!token) {
+        console.error("CSRF token not found");
+        showError("CSRF token tidak ditemukan. Silakan refresh halaman.");
+        return "";
+    }
+    return token;
+}
+
+function loadServiceDataFallback(serviceId) {
+    console.warn('Using fallback method for service data');
+    // Alternative implementation atau show error message
+    showError('Tidak dapat memuat data service. Silakan refresh halaman.');
 }
 
 // Toggle service active status
@@ -731,38 +1008,7 @@ function loadServiceData(serviceId) {
         });
 }
 
-// Alternative method jika API endpoint belum ready
-function loadServiceDataFallback(serviceId) {
-    // Coba ambil data dari DOM (jika available)
-    const serviceCard = document.querySelector(
-        `[data-service-id="${serviceId}"]`
-    );
-    if (!serviceCard) {
-        showError("Service tidak ditemukan di halaman ini");
-        return;
-    }
-
-    // Extract data dari DOM (basic info saja)
-    const serviceName = serviceCard.querySelector("h3")?.textContent || "";
-    const serviceType =
-        serviceCard.getAttribute("data-service-type") || "kiloan";
-    const serviceCategory =
-        serviceCard.querySelector(".text-sm.text-gray-500")?.textContent || "";
-
-    const serviceData = {
-        id: serviceId,
-        name: serviceName.trim(),
-        type: serviceType,
-        category: serviceCategory.trim(),
-        description: "",
-        icon: "fas fa-tshirt",
-        color: "blue-500",
-    };
-
-    showEditServiceModal(serviceData);
-}
-
-// Show edit service modal
+// Show edit service modal dengan data
 function showEditServiceModal(service) {
     if (!service) {
         showError("Data service tidak valid");
@@ -775,14 +1021,14 @@ function showEditServiceModal(service) {
         document.getElementById("editServiceName").value = service.name || "";
         document.getElementById("editServiceType").value =
             service.type || "kiloan";
-        document.getElementById("editServiceCategory").value =
-            service.category || "";
         document.getElementById("editServiceDescription").value =
             service.description || "";
         document.getElementById("editServiceIcon").value =
             service.icon || "fas fa-tshirt";
         document.getElementById("editServiceColor").value =
             service.color || "blue-500";
+        document.getElementById("editServiceActive").checked =
+            service.active || true;
 
         const modal = document.getElementById("editServiceModal");
         if (modal) {
@@ -798,13 +1044,12 @@ function showEditServiceModal(service) {
 function updateService() {
     const serviceId = document.getElementById("editServiceId").value;
     const name = document.getElementById("editServiceName").value;
-    const type = document.getElementById("editServiceType").value;
-    const category = document.getElementById("editServiceCategory").value;
     const description = document.getElementById("editServiceDescription").value;
     const icon = document.getElementById("editServiceIcon").value;
     const color = document.getElementById("editServiceColor").value;
+    const active = document.getElementById("editServiceActive").checked;
 
-    if (!serviceId || !name || !type || !category || !icon || !color) {
+    if (!serviceId || !name || !icon || !color) {
         showError("Data tidak lengkap");
         return;
     }
@@ -819,17 +1064,17 @@ function updateService() {
     submitBtn.disabled = true;
 
     fetch(`/services/${serviceId}`, {
-        method: "PUT",
+        method: "POST",
         headers: {
             "Content-Type": "application/json",
             "X-CSRF-TOKEN": getCsrfToken(),
         },
         body: JSON.stringify({
             name: name,
-            category: category,
             description: description,
             icon: icon,
             color: color,
+            active: active,
         }),
     })
         .then((response) => response.json())
@@ -856,12 +1101,258 @@ function updateService() {
         });
 }
 
+// Load item data for editing
+function loadItemData(itemId, serviceId) {
+    // First get service data to find the item
+    fetch(`/services/${serviceId}`, {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            "X-CSRF-TOKEN": getCsrfToken(),
+        },
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.success) {
+                const item = data.service.items.find(
+                    (item) => item.id == itemId
+                );
+                if (item) {
+                    showEditItemModalForm(item, serviceId);
+                } else {
+                    showError("Item tidak ditemukan");
+                }
+            } else {
+                throw new Error(data.message || "Gagal memuat data service");
+            }
+        })
+        .catch((error) => {
+            console.error("Error loading item data:", error);
+            showError("Gagal memuat data item");
+        });
+}
+
+// Show edit item modal dengan data
+function showEditItemModalForm(item, serviceId) {
+    document.getElementById("editItemServiceId").value = serviceId;
+    document.getElementById("editItemId").value = item.id;
+    document.getElementById("editItemName").value = item.name || "";
+    document.getElementById("editItemPrice").value = item.price || "";
+    document.getElementById("editItemUnit").value = item.unit || "kg";
+    document.getElementById("editItemEstimation").value =
+        item.estimation_time || 24;
+    document.getElementById("editItemDescription").value =
+        item.description || "";
+
+    const modal = document.getElementById("editItemModal");
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
+}
+
+// Load service detail
+function loadServiceDetail(serviceId) {
+    fetch(`/services/${serviceId}`, {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            "X-CSRF-TOKEN": getCsrfToken(),
+        },
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.success) {
+                showServiceDetailModal(data.service);
+                currentServiceId = serviceId;
+            } else {
+                throw new Error(data.message || "Gagal memuat detail service");
+            }
+        })
+        .catch((error) => {
+            console.error("Error loading service detail:", error);
+            showError("Gagal memuat detail service");
+        });
+}
+
+// Show service detail modal
+function showServiceDetailModal(service) {
+    // Populate basic service info
+    document.getElementById("detailServiceName").textContent = service.name;
+
+    // Set service type badge
+    const typeBadge = document.getElementById("detailServiceType");
+    typeBadge.textContent =
+        service.type.charAt(0).toUpperCase() + service.type.slice(1);
+    typeBadge.className = `text-xs px-2 py-1 rounded-full ${
+        service.type === "kiloan"
+            ? "bg-blue-100 text-blue-600"
+            : service.type === "satuan"
+            ? "bg-green-100 text-green-600"
+            : "bg-purple-100 text-purple-600"
+    }`;
+
+    // Set service icon and color
+    const iconContainer = document.getElementById("detailServiceIcon");
+    iconContainer.className = `w-16 h-16 rounded-xl flex items-center justify-center ${service.color}`;
+    iconContainer.querySelector("i").className =
+        service.icon + " text-white text-2xl";
+
+    // Set service description
+    const descContainer = document.getElementById(
+        "detailServiceDescriptionContainer"
+    );
+    const descElement = document.getElementById("detailServiceDescription");
+    if (service.description && service.description.trim() !== "") {
+        descElement.textContent = service.description;
+        descContainer.classList.remove("hidden");
+    } else {
+        descContainer.classList.add("hidden");
+    }
+
+    // Set service status
+    const statusElement = document.getElementById("detailActiveStatus");
+    statusElement.textContent = service.active ? "Aktif" : "Nonaktif";
+    statusElement.className = `font-medium ${
+        service.active ? "text-green-600" : "text-red-600"
+    }`;
+
+    // Calculate and display statistics
+    const totalItems = service.items.length;
+    const avgPrice =
+        totalItems > 0
+            ? service.items.reduce((sum, item) => sum + item.price, 0) /
+              totalItems
+            : 0;
+
+    document.getElementById("detailTotalItems").textContent = totalItems;
+    document.getElementById("detailAvgPrice").textContent = `Rp ${Math.round(
+        avgPrice
+    ).toLocaleString("id-ID")}`;
+    document.getElementById(
+        "detailItemsCount"
+    ).textContent = `${totalItems} item${totalItems > 1 ? "s" : ""}`;
+
+    // Populate service items
+    const itemsContainer = document.getElementById("detailServiceItems");
+    itemsContainer.innerHTML = "";
+
+    service.items.forEach((item, index) => {
+        const itemElement = document.createElement("div");
+        itemElement.className =
+            "service-item-card bg-gray-50 rounded-lg p-3 border border-gray-200 cursor-pointer";
+        itemElement.onclick = function (event) {
+            event.stopPropagation();
+            showEditItemModal(item.id, service.id);
+        };
+        itemElement.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <h5 class="font-medium text-gray-800">${item.name}</h5>
+                    <div class="flex items-center space-x-3 mt-2 text-xs text-gray-500">
+                        <span class="flex items-center space-x-1">
+                            <i class="fas fa-tag"></i>
+                            <span>Rp ${item.price.toLocaleString(
+                                "id-ID"
+                            )}</span>
+                        </span>
+                        <span class="flex items-center space-x-1">
+                            <i class="fas fa-ruler"></i>
+                            <span>${item.unit}</span>
+                        </span>
+                        <span class="flex items-center space-x-1">
+                            <i class="fas fa-clock"></i>
+                            <span>${item.estimation_time} jam</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="text-blue-500">
+                    <i class="fas fa-edit"></i>
+                </div>
+            </div>
+        `;
+        itemsContainer.appendChild(itemElement);
+    });
+
+    // Set additional info
+    document.getElementById("detailServiceTypeFull").textContent =
+        service.type === "kiloan" ? "Laundry Kiloan" : "Laundry Satuan";
+    document.getElementById("detailCreatedAt").textContent = new Date(
+        service.created_at
+    ).toLocaleDateString("id-ID");
+    document.getElementById("detailUpdatedAt").textContent = new Date(
+        service.updated_at
+    ).toLocaleDateString("id-ID");
+
+    // Show modal
+    const modal = document.getElementById("serviceDetailModal");
+    modal.classList.remove("hidden");
+}
+
+// Handle add item form submission
+function handleAddItem() {
+    const serviceId = document.getElementById("addItemServiceId").value;
+    const name = document.getElementById("addItemName").value;
+    const price = document.getElementById("addItemPrice").value;
+    const unit = document.getElementById("addItemUnit").value;
+    const estimation = document.getElementById("addItemEstimation").value;
+    const description = document.getElementById("addItemDescription").value;
+
+    if (!serviceId || !name || !price || !unit || !estimation) {
+        showError("Data tidak lengkap");
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.querySelector(
+        '#addItemForm button[type="submit"]'
+    );
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin mr-2"></i>Menambahkan...';
+    submitBtn.disabled = true;
+
+    fetch(`/services/${serviceId}/items`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify({
+            name: name,
+            price: price,
+            unit: unit,
+            estimation_time: estimation,
+            description: description,
+        }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.success) {
+                showToast("Item berhasil ditambahkan!", "success");
+                closeAddItemModal();
+                // Reload page setelah delay singkat
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || "Gagal menambahkan item");
+            }
+        })
+        .catch((error) => {
+            console.error("Error:", error);
+            showError("Terjadi kesalahan saat menambahkan item");
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+}
+
 // Delete service
-function deleteService(serviceId) {
+function deleteService(serviceId, serviceName) {
     if (
-        !confirm(
-            "Apakah Anda yakin ingin menghapus service ini? Tindakan ini tidak dapat dibatalkan."
-        )
+        !confirm(`Apakah Anda yakin ingin menghapus service "${serviceName}"?`)
     ) {
         return;
     }
@@ -907,6 +1398,9 @@ function collectPriceItems() {
         const estimationInput = item.querySelector(
             'input[name*="[estimation_time]"]'
         );
+        const descriptionInput = item.querySelector(
+            'textarea[name*="[description]"]'
+        );
 
         if (nameInput && nameInput.value && priceInput && priceInput.value) {
             items.push({
@@ -916,6 +1410,7 @@ function collectPriceItems() {
                 estimation_time: estimationInput
                     ? parseInt(estimationInput.value)
                     : 24,
+                description: descriptionInput ? descriptionInput.value : null,
             });
         }
     });
@@ -937,11 +1432,6 @@ function validateServiceData(data) {
 
     if (!data.name || data.name.trim() === "") {
         showError("Nama layanan harus diisi");
-        return false;
-    }
-
-    if (!data.category || data.category.trim() === "") {
-        showError("Kategori harus dipilih");
         return false;
     }
 
@@ -982,9 +1472,7 @@ function updateCategoryFilter(categories) {
             category.original_name || category.name.toLowerCase();
         button.setAttribute("data-category", filterCategory);
 
-        button.innerHTML = `
-            ${category.name}
-        `;
+        button.innerHTML = `${category.name}`;
 
         button.addEventListener("click", function () {
             const category = this.getAttribute("data-category");
@@ -1020,10 +1508,6 @@ function updateServiceCardBadges() {
             case "satuan":
                 badgeColor = "bg-green-100 text-green-600";
                 badgeText = "Satuan";
-                break;
-            case "khusus":
-                badgeColor = "bg-purple-100 text-purple-600";
-                badgeText = "Khusus";
                 break;
         }
 
@@ -1099,13 +1583,18 @@ function showPriceHistory(serviceId) {
 // Export functions untuk global access
 window.showAddServiceModal = showAddServiceModal;
 window.closeAddServiceModal = closeAddServiceModal;
-window.editServiceItem = editServiceItem;
+window.showEditItemModal = showEditItemModal;
 window.closeEditItemModal = closeEditItemModal;
-window.editService = editService;
+window.showEditServiceModal = showEditServiceModal;
 window.closeEditServiceModal = closeEditServiceModal;
+window.showServiceDetail = showServiceDetail;
+window.closeServiceDetailModal = closeServiceDetailModal;
+window.showAddItemModal = showAddItemModal;
+window.closeAddItemModal = closeAddItemModal;
 window.closeAllModals = closeAllModals;
 window.handleServiceTypeChange = handleServiceTypeChange;
 window.addPriceItem = addPriceItem;
 window.removePriceItem = removePriceItem;
 window.showPriceHistory = showPriceHistory;
 window.deleteService = deleteService;
+window.toggleService = toggleService;

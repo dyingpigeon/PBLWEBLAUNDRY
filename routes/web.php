@@ -40,25 +40,28 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     });
 
-    // Service Routes
+    // Service Routes - UPDATED FOR NEW STRUCTURE
     Route::prefix('services')->group(function () {
         // Basic service routes
         Route::get('/', [ServiceController::class, 'index'])->name('services.index');
         Route::post('/', [ServiceController::class, 'store'])->name('services.store');
-
-        // ✅ SINGLE ROUTE untuk show - HAPUS DUPLIKAT
-        Route::get('/{serviceId}', [ServiceController::class, 'show'])->name('services.show');
-
+        
+        // Service detail and edit
+        Route::get('/{id}', [ServiceController::class, 'show'])->name('services.show');
+        Route::get('/{id}/edit', [ServiceController::class, 'getServiceForEdit'])->name('services.edit');
+        
         // Service actions
         Route::post('/{id}/toggle', [ServiceController::class, 'toggleService'])->name('services.toggle');
-        Route::get('/{id}/edit', [ServiceController::class, 'getServiceForEdit'])->name('services.edit');
         Route::post('/{id}', [ServiceController::class, 'updateService'])->name('services.update');
         Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('services.destroy');
 
         // Service items routes
         Route::post('/{serviceId}/items', [ServiceController::class, 'addServiceItem'])->name('services.items.store');
         Route::post('/{serviceId}/items/{itemId}', [ServiceController::class, 'updateServiceItem'])->name('services.items.update');
-        Route::delete('/{serviceId}/items/{itemId}', [ServiceController::class, 'deleteServiceItem'])->name('services.items.delete');
+        
+        // API routes for service types and categories
+        Route::get('/types', [ServiceController::class, 'getServiceTypes'])->name('services.types');
+        Route::get('/categories', [ServiceController::class, 'getServiceCategories'])->name('services.categories');
     });
 
     // Transaction Routes
@@ -85,20 +88,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}/payment', [TrackingController::class, 'updatePayment'])->name('tracking.updatePayment');
     });
 
-    // ✅ PERBAIKAN 1: Report Routes - HAPUS DUPLIKASI
+    // Report Routes
     Route::prefix('reports')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('reports.index');
-        // HAPUS route yang tidak ada di controller:
-        // Route::post('/data', [ReportController::class, 'getReportData'])->name('reports.data'); // TIDAK ADA
-        // Route::post('/export/pdf', [ReportController::class, 'exportPDF'])->name('reports.export.pdf'); // TIDAK ADA
-        // Route::post('/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel'); // TIDAK ADA
-        
-        // ✅ GUNAKAN route yang sesuai dengan controller:
         Route::get('/financial-summary', [ReportController::class, 'getFinancialSummary'])->name('reports.financial-summary');
         Route::post('/export', [ReportController::class, 'exportReport'])->name('reports.export');
     });
 
-    // ✅ PERBAIKAN 2: API Routes - Reorganize dan konsisten
+    // API Routes - Reorganize dan konsisten
     Route::prefix('api')->group(function () {
         // Customer API
         Route::get('/top-customers', [CustomerController::class, 'getTopCustomers'])->name('customers.top');
@@ -113,8 +110,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/transactions/today-summary', [TransactionController::class, 'getTodaySummary'])->name('api.transactions.today-summary');
         Route::get('/transactions/recent', [TransactionController::class, 'getRecentTransactions'])->name('api.transactions.recent');
         Route::post('/transactions', [TransactionController::class, 'store'])->name('api.transactions.store');
+        Route::get('/transactions/satuan-items', [TransactionController::class, 'getSatuanItems'])->name('api.transactions.satuan-items');
 
-        // ✅ PERBAIKAN 3: Report API - Pindahkan dari luar dan konsisten
+        // Report API
         Route::prefix('reports')->group(function () {
             Route::get('/financial-summary', [ReportController::class, 'getFinancialSummary'])->name('api.reports.financial-summary');
             Route::get('/today-summary', [ReportController::class, 'getTodaySummary'])->name('api.reports.today-summary');
@@ -129,6 +127,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/stats/processing', [TrackingController::class, 'getProcessingStats'])->name('api.tracking.processingStats');
             Route::get('/{id}/details', [TrackingController::class, 'getTransactionWithDetails'])->name('api.tracking.details');
         });
+
+        // Service API Routes
+        Route::prefix('services')->group(function () {
+            Route::get('/types', [ServiceController::class, 'getServiceTypes'])->name('api.services.types');
+            Route::get('/categories', [ServiceController::class, 'getServiceCategories'])->name('api.services.categories');
+        });
     });
 
     // Profile Routes
@@ -138,10 +142,6 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/', [ProfileController::class, 'destroy'])->name('profile.destroy');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
     });
-
-    // ✅ PERBAIKAN 4: Hapus route duplicate untuk tracking dan reports
-    // Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index'); // DUPLIKAT - SUDAH ADA DI ATAS
-    // Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'); // DUPLIKAT - SUDAH ADA DI ATAS
 
     // Settings Routes
     Route::prefix('settings')->group(function () {
@@ -183,7 +183,7 @@ Route::fallback(function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
-// ✅ PERBAIKAN 5: Static JS files - Tetap pertahankan
+// Static JS files
 Route::get('/js/{file}', function ($file) {
     $path = resource_path('js/' . $file);
 
@@ -196,7 +196,7 @@ Route::get('/js/{file}', function ($file) {
     ]);
 })->where('file', '.*\.js$');
 
-// ✅ PERBAIKAN 6: Backup routes - Tetap pertahankan
+// Backup routes
 Route::get('/backup/download/{filename}', function ($filename) {
     $filePath = 'backups/' . $filename;
 

@@ -78,7 +78,7 @@
     @include('partials.transaction-customer-modal')
     @include('partials.transaction-service-modal')
     @include('partials.transaction-kiloan-modal')
-    @include('partials.transaction-satuan-modal')
+    {{-- @include('partials.transaction-satuan-modal') --}}
     @include('partials.transaction-satuan-items-modal')
     @include('partials.transaction-payment-modal')
     @include('partials.transaction-review-modal')

@@ -19,23 +19,21 @@ class ServiceController extends Controller
                     s.id,
                     s.name,
                     s.type,
-                    s.category,
                     s.description,
                     s.icon,
                     s.color,
                     s.active,
+                    s.created_at,
+                    s.updated_at,
                     si.id as item_id,
                     si.name as item_name,
                     si.price,
                     si.unit,
                     si.estimation_time,
                     si.description as item_description,
-                    si.active as item_active,
-                    sc.name as category_name,
-                    sc.icon as category_icon
+                    si.active as item_active
                 FROM services s
                 LEFT JOIN service_items si ON s.id = si.service_id AND si.active = 1
-                LEFT JOIN service_categories sc ON si.category_id = sc.id
                 ORDER BY s.active DESC, s.name, si.name
             ";
 
@@ -67,11 +65,12 @@ class ServiceController extends Controller
                         'id' => $service->id,
                         'name' => $service->name,
                         'type' => $service->type,
-                        'category' => $service->category,
                         'description' => $service->description,
                         'icon' => $service->icon,
-                        'color' => 'bg-' . $service->color,
+                        'color' => $service->color, // Tidak perlu tambah 'bg-' karena sudah di view
                         'active' => (bool) $service->active,
+                        'created_at' => $service->created_at,
+                        'updated_at' => $service->updated_at,
                         'items' => []
                     ];
                     Log::debug('ServiceController@index: Membuat service baru', [
@@ -90,9 +89,7 @@ class ServiceController extends Controller
                         'unit' => $service->unit,
                         'estimation_time' => $service->estimation_time,
                         'description' => $service->item_description,
-                        'active' => (bool) $service->item_active,
-                        'category_name' => $service->category_name,
-                        'category_icon' => $service->category_icon
+                        'active' => (bool) $service->item_active
                     ];
                     $totalItems++;
                 }
@@ -108,14 +105,14 @@ class ServiceController extends Controller
                 }))
             ]);
 
-            // Get categories untuk filter
-            $categoriesQuery = "SELECT DISTINCT category FROM services WHERE category IS NOT NULL ORDER BY category";
+            // Get categories untuk filter (berdasarkan type)
+            $categoriesQuery = "SELECT DISTINCT type as category FROM services WHERE type IS NOT NULL ORDER BY type";
             Log::debug('ServiceController@index: Mengambil categories untuk filter');
             $categoriesResults = DB::select($categoriesQuery);
             $categories = array_column($categoriesResults, 'category');
             Log::debug('ServiceController@index: Berhasil mengambil categories', [
                 'categories_count' => count($categories),
-                'categories_list' => array_column($categories, 'category')
+                'categories_list' => $categories
             ]);
 
             Log::debug('ServiceController@index: Proses selesai, mengembalikan view');
@@ -177,11 +174,12 @@ class ServiceController extends Controller
                 'id' => $services[0]->id,
                 'name' => $services[0]->name,
                 'type' => $services[0]->type,
-                'category' => $services[0]->category,
                 'description' => $services[0]->description,
                 'icon' => $services[0]->icon,
                 'color' => $services[0]->color,
                 'active' => (bool) $services[0]->active,
+                'created_at' => $services[0]->created_at,
+                'updated_at' => $services[0]->updated_at,
                 'items' => []
             ];
 
@@ -234,14 +232,12 @@ class ServiceController extends Controller
         Log::debug('ServiceController@store: Data request received', [
             'name' => $request->name,
             'type' => $request->type,
-            'category' => $request->category,
             'items_count' => count($request->items ?? [])
         ]);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:kiloan,satuan,khusus',
-            'category' => 'required|string|max:100',
+            'type' => 'required|in:kiloan,satuan',
             'icon' => 'required|string|max:50',
             'color' => 'required|string|max:50',
             'description' => 'nullable|string|max:500',
@@ -264,17 +260,16 @@ class ServiceController extends Controller
         try {
             // Insert service
             $serviceQuery = "
-                INSERT INTO services (name, type, category, description, icon, color, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                INSERT INTO services (name, type, description, icon, color, active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())
             ";
 
             $serviceData = [
                 $validated['name'],
                 $validated['type'],
-                $validated['category'],
                 $validated['description'] ?? null,
                 $validated['icon'],
-                str_replace('bg-', '', $validated['color'])
+                $validated['color'] // Simpan warna asli tanpa modifikasi
             ];
 
             Log::debug('ServiceController@store: Menyimpan service ke database', $serviceData);
@@ -288,8 +283,8 @@ class ServiceController extends Controller
             $totalItemPrice = 0;
             foreach ($validated['items'] as $index => $item) {
                 $itemQuery = "
-                    INSERT INTO service_items (service_id, name, price, unit, estimation_time, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+                    INSERT INTO service_items (service_id, name, price, unit, estimation_time, description, active, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
                 ";
 
                 $itemData = [
@@ -297,7 +292,8 @@ class ServiceController extends Controller
                     $item['name'],
                     $item['price'],
                     $item['unit'],
-                    $item['estimation_time']
+                    $item['estimation_time'],
+                    $item['description'] ?? null
                 ];
 
                 Log::debug('ServiceController@store: Menyimpan service item ' . ($index + 1), [
@@ -330,7 +326,6 @@ class ServiceController extends Controller
                 'request_data' => [
                     'name' => $request->name,
                     'type' => $request->type,
-                    'category' => $request->category,
                     'items_count' => count($request->items ?? [])
                 ],
                 'trace' => $e->getTraceAsString(),
@@ -416,10 +411,11 @@ class ServiceController extends Controller
         ]);
 
         $validated = $request->validate([
-            'price' => 'required|numeric|min:0',
             'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
-            'estimation_time' => 'required|integer|min:1'
+            'estimation_time' => 'required|integer|min:1',
+            'description' => 'nullable|string'
         ]);
 
         Log::debug('ServiceController@updateServiceItem: Validasi berhasil', $validated);
@@ -438,13 +434,14 @@ class ServiceController extends Controller
             }
 
             // Update item
-            $updateQuery = "UPDATE service_items SET price = ?, name = ?, unit = ?, estimation_time = ?, updated_at = NOW() WHERE id = ?";
+            $updateQuery = "UPDATE service_items SET name = ?, price = ?, unit = ?, estimation_time = ?, description = ?, updated_at = NOW() WHERE id = ?";
             Log::debug('ServiceController@updateServiceItem: Menjalankan update item');
             $affected = DB::update($updateQuery, [
-                $validated['price'],
                 $validated['name'],
+                $validated['price'],
                 $validated['unit'],
                 $validated['estimation_time'],
+                $validated['description'] ?? null,
                 $itemId
             ]);
 
@@ -477,51 +474,40 @@ class ServiceController extends Controller
     {
         Log::debug('ServiceController@updateService: Mengupdate service', [
             'service_id' => $id,
-            'update_data' => [
-                'name' => $request->name,
-                'category' => $request->category,
-                'new_items_count' => count($request->new_items ?? [])
-            ]
+            'update_data' => $request->all()
         ]);
 
+        // DIPERBAIKI: tambah validasi untuk active
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'category' => 'required|string|max:100',
             'icon' => 'required|string|max:50',
             'color' => 'required|string|max:50',
             'description' => 'nullable|string|max:500',
-            'new_items' => 'nullable|array',
-            'new_items.*.name' => 'required|string|max:255',
-            'new_items.*.price' => 'required|numeric|min:0',
-            'new_items.*.unit' => 'required|string|max:20',
-            'new_items.*.estimation_time' => 'required|integer|min:1'
+            'active' => 'required|boolean' // DITAMBAHKAN
         ]);
 
         Log::debug('ServiceController@updateService: Validasi berhasil', [
             'service_name' => $validated['name'],
-            'new_items_count' => count($validated['new_items'] ?? [])
+            'active_status' => $validated['active']
         ]);
 
         DB::beginTransaction();
         Log::debug('ServiceController@updateService: Memulai database transaction');
 
         try {
-            // Update service details
-            $query = "UPDATE services SET name = ?, category = ?, icon = ?, color = ?, description = ?, updated_at = NOW() WHERE id = ?";
+            // Update service details - DIPERBAIKI: gunakan active dari validated data
+            $query = "UPDATE services SET name = ?, icon = ?, color = ?, description = ?, active = ?, updated_at = NOW() WHERE id = ?";
             $serviceData = [
                 $validated['name'],
-                $validated['category'],
                 $validated['icon'],
-                str_replace('bg-', '', $validated['color']),
+                $validated['color'],
                 $validated['description'] ?? null,
+                $validated['active'], // DIPERBAIKI: gunakan dari validated data
                 $id
             ];
 
             Log::debug('ServiceController@updateService: Mengupdate service data');
             $affected = DB::update($query, $serviceData);
-            Log::debug('ServiceController@updateService: Service update completed', [
-                'affected_rows' => $affected
-            ]);
 
             if ($affected === 0) {
                 DB::rollBack();
@@ -529,64 +515,17 @@ class ServiceController extends Controller
                 return response()->json(['success' => false, 'message' => 'Service tidak ditemukan']);
             }
 
-            // Tambahkan item baru jika ada
-            $newItemsCount = 0;
-            $newItemsTotalPrice = 0;
-            if (isset($validated['new_items']) && count($validated['new_items']) > 0) {
-                Log::debug('ServiceController@updateService: Menambahkan items baru', [
-                    'count' => count($validated['new_items'])
-                ]);
-
-                foreach ($validated['new_items'] as $index => $item) {
-                    $itemQuery = "
-                    INSERT INTO service_items (service_id, name, price, unit, estimation_time, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, NOW(), NOW())
-                    ";
-
-                    $itemData = [
-                        $id,
-                        $item['name'],
-                        $item['price'],
-                        $item['unit'],
-                        $item['estimation_time']
-                    ];
-
-                    Log::debug('ServiceController@updateService: Menyimpan item baru ' . ($index + 1), [
-                        'item_name' => $item['name'],
-                        'price' => $item['price']
-                    ]);
-                    DB::insert($itemQuery, $itemData);
-                    $newItemsCount++;
-                    $newItemsTotalPrice += (float) $item['price'];
-                }
-            }
-
             DB::commit();
-            Log::debug('ServiceController@updateService: Database transaction committed', [
-                'new_items_added' => $newItemsCount,
-                'new_items_total_price' => $newItemsTotalPrice
-            ]);
+            Log::debug('ServiceController@updateService: Service berhasil diupdate');
 
-            $message = 'Service berhasil diupdate' .
-                ($newItemsCount > 0 ? ' dengan ' . $newItemsCount . ' item baru' : '');
-
-            Log::debug('ServiceController@updateService: ' . $message);
             return response()->json([
                 'success' => true,
-                'message' => $message
+                'message' => 'Service berhasil diupdate'
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('ServiceController@updateService: Error - ' . $e->getMessage(), [
-                'service_id' => $id,
-                'update_data' => [
-                    'name' => $validated['name'],
-                    'category' => $validated['category'],
-                    'new_items_count' => count($validated['new_items'] ?? [])
-                ],
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('ServiceController@updateService: Error - ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengupdate service: ' . $e->getMessage()
@@ -610,8 +549,7 @@ class ServiceController extends Controller
             'price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
             'estimation_time' => 'required|integer|min:1',
-            'description' => 'nullable|string',
-            'category_id' => 'nullable|exists:service_categories,id'
+            'description' => 'nullable|string'
         ]);
 
         Log::debug('ServiceController@addServiceItem: Validasi berhasil', [
@@ -636,13 +574,12 @@ class ServiceController extends Controller
 
             // Insert new service item
             $query = "
-            INSERT INTO service_items (service_id, category_id, name, price, unit, estimation_time, description, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            INSERT INTO service_items (service_id, name, price, unit, estimation_time, description, active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
             ";
 
             $itemData = [
                 $serviceId,
-                $validated['category_id'] ?? null,
                 $validated['name'],
                 $validated['price'],
                 $validated['unit'],
@@ -697,8 +634,7 @@ class ServiceController extends Controller
                 si.unit,
                 si.estimation_time,
                 si.description as item_description,
-                si.active as item_active,
-                si.category_id
+                si.active as item_active
             FROM services s
             LEFT JOIN service_items si ON s.id = si.service_id
             WHERE s.id = ?
@@ -728,11 +664,12 @@ class ServiceController extends Controller
                 'id' => $services[0]->id,
                 'name' => $services[0]->name,
                 'type' => $services[0]->type,
-                'category' => $services[0]->category,
                 'description' => $services[0]->description,
                 'icon' => $services[0]->icon,
                 'color' => $services[0]->color,
                 'active' => (bool) $services[0]->active,
+                'created_at' => $services[0]->created_at,
+                'updated_at' => $services[0]->updated_at,
                 'items' => []
             ];
 
@@ -749,8 +686,7 @@ class ServiceController extends Controller
                         'unit' => $service->unit,
                         'estimation_time' => $service->estimation_time,
                         'description' => $service->item_description,
-                        'active' => $isActive,
-                        'category_id' => $service->category_id
+                        'active' => $isActive
                     ];
                     $itemCount++;
                     if ($isActive) {
@@ -760,14 +696,6 @@ class ServiceController extends Controller
                     }
                 }
             }
-
-            // Get available categories untuk dropdown
-            $categoriesQuery = "SELECT id, name FROM service_categories WHERE active = 1 ORDER BY sort_order, name";
-            Log::debug('ServiceController@getServiceForEdit: Mengambil categories untuk dropdown');
-            $categories = DB::select($categoriesQuery);
-            Log::debug('ServiceController@getServiceForEdit: Categories berhasil diambil', [
-                'categories_count' => count($categories)
-            ]);
 
             Log::debug('ServiceController@getServiceForEdit: Formatting selesai', [
                 'service_name' => $serviceData['name'],
@@ -779,8 +707,7 @@ class ServiceController extends Controller
             Log::debug('ServiceController@getServiceForEdit: Proses selesai, mengembalikan response JSON');
             return response()->json([
                 'success' => true,
-                'service' => $serviceData,
-                'categories' => $categories
+                'service' => $serviceData
             ]);
 
         } catch (\Exception $e) {
@@ -856,8 +783,7 @@ class ServiceController extends Controller
 
         $types = [
             ['value' => 'kiloan', 'label' => 'Laundry Kiloan', 'icon' => 'fas fa-weight'],
-            ['value' => 'satuan', 'label' => 'Laundry Satuan', 'icon' => 'fas fa-tshirt'],
-            ['value' => 'khusus', 'label' => 'Layanan Khusus', 'icon' => 'fas fa-star']
+            ['value' => 'satuan', 'label' => 'Laundry Satuan', 'icon' => 'fas fa-tshirt']
         ];
 
         Log::debug('ServiceController@getServiceTypes: Mengembalikan service types', [
@@ -875,12 +801,13 @@ class ServiceController extends Controller
         Log::debug('ServiceController@getServiceCategories: Mengambil daftar service categories');
 
         try {
+            // Karena tidak ada tabel service_categories, kita gunakan type sebagai categories
             $categoriesQuery = "
-            SELECT DISTINCT category as name, 
+            SELECT DISTINCT type as name, 
                    COUNT(*) as service_count
             FROM services 
             WHERE active = 1 
-            GROUP BY category 
+            GROUP BY type 
             ORDER BY service_count DESC, name
             ";
 
@@ -893,25 +820,15 @@ class ServiceController extends Controller
                 'execution_time_ms' => $executionTime
             ]);
 
-            // Map category values ke label yang lebih user-friendly
+            // Map type values ke label yang lebih user-friendly
             $categoryMapping = [
-                'regular' => 'Regular',
-                'special' => 'Khusus',
-                'cuci' => 'Cuci',
-                'setrika' => 'Setrika',
-                'dry_clean' => 'Dry Clean',
-                'khusus' => 'Khusus',
-                'lainnya' => 'Lainnya'
+                'kiloan' => 'Kiloan',
+                'satuan' => 'Satuan'
             ];
 
             $categoryIcons = [
-                'regular' => 'fas fa-tshirt',
-                'special' => 'fas fa-star',
-                'cuci' => 'fas fa-soap',
-                'setrika' => 'fas fa-fire',
-                'dry_clean' => 'fas fa-wind',
-                'khusus' => 'fas fa-star',
-                'lainnya' => 'fas fa-ellipsis-h'
+                'kiloan' => 'fas fa-weight',
+                'satuan' => 'fas fa-tshirt'
             ];
 
             $formattedCategories = array_map(function ($category) use ($categoryMapping, $categoryIcons) {

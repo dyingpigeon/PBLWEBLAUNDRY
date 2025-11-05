@@ -48,99 +48,72 @@
             </div>
         </div>
 
-        <!-- Services Grid -->
-        <div id="servicesGrid" class="grid grid-cols-1 gap-3 p-4">
-            @foreach($servicesData as $service)
-                <div class="service-card bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-95 transition-transform duration-200" 
-                     data-service-id="{{ $service['id'] }}"
-                     data-category="{{ $service['category'] }}"
-                     onclick="showServiceDetail({{ $service['id'] }})">
-                    
-                    <!-- Header dengan Status dan Type Badge -->
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center space-x-3 flex-1">
-                            <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $service['color'] }}">
-                                <i class="{{ $service['icon'] }} text-white text-lg"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center space-x-2 mb-1">
-                                    <h3 class="font-semibold text-gray-800 truncate">{{ $service['name'] }}</h3>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="service-type-badge text-xs px-2 py-1 rounded-full 
-                                                {{ $service['type'] == 'kiloan' ? 'bg-blue-100 text-blue-600' :
-                                                   ($service['type'] == 'satuan' ? 'bg-green-100 text-green-600' :
-                                                   'bg-purple-100 text-purple-600') }}">
-                                        {{ ucfirst($service['type']) }}
-                                    </span>
-                                    <span class="text-sm text-gray-500">{{ $service['category'] }}</span>
-                                </div>
-                                @if(!empty($service['description']))
-                                    <p class="text-xs text-gray-400 mt-1">
-                                        {{ \Illuminate\Support\Str::limit($service['description'], 50) }}
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" {{ $service['active'] ? 'checked' : '' }} 
-                                       class="sr-only peer service-toggle"
-                                       data-service-id="{{ $service['id'] }}"
-                                       onchange="toggleServiceStatus({{ $service['id'] }}, this.checked)">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Service Items -->
-                    <div class="space-y-2">
-                        @foreach($service['items'] as $item)
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                                <div class="flex-1">
-                                    <span class="text-sm text-gray-600">{{ $item['name'] }}</span>
-                                    <div class="flex items-center space-x-2 text-xs text-gray-400 mt-1">
-                                        <span>{{ $item['unit'] }}</span>
-                                        <span>•</span>
-                                        <span><i class="fas fa-clock mr-1"></i>{{ $item['estimation_time'] }} jam</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="font-semibold text-gray-800">Rp {{ number_format($item['price'], 0, ',', '.') }}</span>
-                                    <button class="edit-item-btn w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors duration-200"
-                                            onclick="event.stopPropagation(); showEditItemModal({{ $item['id'] }}, {{ $service['id'] }})">
-                                        <i class="fas fa-edit text-xs"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <!-- Footer Actions -->
-                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                        <div class="flex space-x-3">
-                            <button class="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1 transition-colors duration-200">
-                                <i class="fas fa-history"></i>
-                                <span>Riwayat</span>
-                            </button>
-                            <button class="edit-service-btn text-xs text-blue-500 hover:text-blue-700 flex items-center space-x-1 transition-colors duration-200"
-                                    onclick="event.stopPropagation(); showEditServiceModal({{ $service['id'] }})">
-                                <i class="fas fa-cog"></i>
-                                <span>Edit</span>
-                            </button>
-                            <button class="delete-service-btn text-xs text-red-500 hover:text-red-700 flex items-center space-x-1 transition-colors duration-200"
-                                    onclick="event.stopPropagation(); deleteService({{ $service['id'] }}, '{{ $service['name'] }}')">
-                                <i class="fas fa-trash"></i>
-                                <span>Hapus</span>
-                            </button>
-                        </div>
-                        <span class="text-xs px-2 py-1 rounded-full {{ count($service['items']) > 1 ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600' }}">
-                            {{ count($service['items']) }} item
-                        </span>
-                    </div>
+        <!-- Services Grid - Dipisah Kiloan dan Satuan -->
+        <div id="servicesGrid" class="space-y-6 p-4">
+            
+            <!-- Section Layanan Kiloan -->
+            @php
+                $kiloanServices = collect($servicesData)->where('type', 'kiloan');
+            @endphp
+            
+            @if($kiloanServices->count() > 0)
+            <div class="kiloan-section">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Layanan Kiloan</h2>
+                    <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
+                        {{ $kiloanServices->count() }} layanan
+                    </span>
                 </div>
-            @endforeach
+                <div class="grid grid-cols-1 gap-3">
+                    @foreach($kiloanServices as $service)
+                        @include('partials.service-card', ['service' => $service])
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <!-- Section Layanan Satuan -->
+            @php
+                $satuanServices = collect($servicesData)->where('type', 'satuan');
+            @endphp
+            
+            @if($satuanServices->count() > 0)
+            <div class="satuan-section">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Layanan Satuan</h2>
+                    <span class="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
+                        {{ $satuanServices->count() }} layanan
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    @foreach($satuanServices as $service)
+                        @include('partials.service-card', ['service' => $service])
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <!-- Section Layanan Khusus -->
+            @php
+                $khususServices = collect($servicesData)->where('type', 'khusus');
+            @endphp
+            
+            @if($khususServices->count() > 0)
+            <div class="khusus-section">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Layanan Khusus</h2>
+                    <span class="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
+                        {{ $khususServices->count() }} layanan
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    @foreach($khususServices as $service)
+                        @include('partials.service-card', ['service' => $service])
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
         </div>
 
         <!-- Empty State -->
@@ -250,15 +223,25 @@
             -ms-user-select: none;
             user-select: none;
         }
+        
+        /* Section styling */
+        .kiloan-section, .satuan-section, .khusus-section {
+            margin-bottom: 2rem;
+        }
+        
+        .kiloan-section h2, .satuan-section h2, .khusus-section h2 {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
     </style>
 @endpush
 
 @push('scripts')
 <script>
-    // Global variables
+    // Global variables - DIPERBAIKI: tambah deklarasi currentServiceId
     let currentService = null;
     let currentItem = null;
-    let currentServiceId = null;
+    let currentServiceId = null; // DITAMBAHKAN
 
     // API Base URL
     const API_BASE = '/services';
@@ -348,10 +331,8 @@
                 if (serviceCard) {
                     serviceCard.remove();
                 }
-                // Reload page after delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                // Check and update empty state
+                checkEmptyState();
             } else {
                 showToast(result.message, 'error');
             }
@@ -384,10 +365,15 @@
                 document.getElementById('editServiceId').value = serviceId;
                 document.getElementById('editServiceName').value = currentService.name || '';
                 document.getElementById('editServiceType').value = currentService.type || 'kiloan';
-                document.getElementById('editServiceCategory').value = currentService.category || 'Cuci';
                 document.getElementById('editServiceDescription').value = currentService.description || '';
                 document.getElementById('editServiceIcon').value = currentService.icon || 'fas fa-tshirt';
                 document.getElementById('editServiceColor').value = currentService.color || 'blue-500';
+                
+                // DIPERBAIKI: Handle active status
+                const activeCheckbox = document.getElementById('editServiceActive');
+                if (activeCheckbox) {
+                    activeCheckbox.checked = currentService.active !== false;
+                }
                 
                 const modal = document.getElementById('editServiceModal');
                 modal.classList.remove('hidden');
@@ -424,6 +410,7 @@
                     document.getElementById('editItemPrice').value = currentItem.price || '';
                     document.getElementById('editItemUnit').value = currentItem.unit || 'kg';
                     document.getElementById('editItemEstimation').value = currentItem.estimation_time || '';
+                    document.getElementById('editItemDescription').value = currentItem.description || '';
                     
                     const modal = document.getElementById('editItemModal');
                     modal.classList.remove('hidden');
@@ -451,11 +438,10 @@
             
             if (result.success) {
                 currentService = result.service;
-                currentServiceId = serviceId;
+                currentServiceId = serviceId; // DIPERBAIKI: Set currentServiceId
                 
                 // Populate basic service info
                 document.getElementById('detailServiceName').textContent = currentService.name;
-                document.getElementById('detailServiceCategory').textContent = currentService.category;
                 
                 // Set service type badge
                 const typeBadge = document.getElementById('detailServiceType');
@@ -466,9 +452,10 @@
                     'bg-purple-100 text-purple-600'
                 }`;
                 
-                // Set service icon and color
+                // Set service icon and color - DIPERBAIKI: tambah prefix bg-
                 const iconContainer = document.getElementById('detailServiceIcon');
-                iconContainer.className = `w-16 h-16 rounded-xl flex items-center justify-center bg-${currentService.color}`;
+                const colorClass = currentService.color.startsWith('bg-') ? currentService.color : `bg-${currentService.color}`;
+                iconContainer.className = `w-16 h-16 rounded-xl flex items-center justify-center ${colorClass}`;
                 iconContainer.querySelector('i').className = currentService.icon + ' text-white text-2xl';
                 
                 // Set service description
@@ -533,6 +520,13 @@
                     itemsContainer.appendChild(itemElement);
                 });
                 
+                // Set additional info
+                document.getElementById('detailServiceTypeFull').textContent = 
+                    currentService.type === 'kiloan' ? 'Laundry Kiloan' : 
+                    currentService.type === 'satuan' ? 'Laundry Satuan' : 'Layanan Khusus';
+                document.getElementById('detailCreatedAt').textContent = new Date(currentService.created_at).toLocaleDateString('id-ID');
+                document.getElementById('detailUpdatedAt').textContent = new Date(currentService.updated_at).toLocaleDateString('id-ID');
+                
                 // Show modal
                 const modal = document.getElementById('serviceDetailModal');
                 modal.classList.remove('hidden');
@@ -591,7 +585,6 @@
         const formData = {
             name: document.getElementById('serviceName').value,
             type: document.getElementById('serviceType').value,
-            category: document.getElementById('serviceCategory').value,
             icon: document.getElementById('serviceIcon').value,
             color: document.getElementById('serviceColor').value,
             description: document.getElementById('serviceDescription').value,
@@ -642,11 +635,10 @@
         const serviceId = document.getElementById('editServiceId').value;
         const formData = {
             name: document.getElementById('editServiceName').value,
-            category: document.getElementById('editServiceCategory').value,
             icon: document.getElementById('editServiceIcon').value,
             color: document.getElementById('editServiceColor').value,
             description: document.getElementById('editServiceDescription').value,
-            new_items: []
+            active: document.getElementById('editServiceActive')?.checked || true // DIPERBAIKI: tambah active field
         };
 
         try {
@@ -689,7 +681,8 @@
             name: document.getElementById('editItemName').value,
             price: parseFloat(document.getElementById('editItemPrice').value),
             unit: document.getElementById('editItemUnit').value,
-            estimation_time: parseInt(document.getElementById('editItemEstimation').value)
+            estimation_time: parseInt(document.getElementById('editItemEstimation').value),
+            description: document.getElementById('editItemDescription').value
         };
 
         try {
@@ -810,18 +803,68 @@
                 });
             }
         });
+
+        // Initialize empty state check
+        checkEmptyState();
     });
 
     function filterServicesByCategory(category) {
         const serviceCards = document.querySelectorAll('.service-card');
+        let visibleCount = 0;
         
         serviceCards.forEach(card => {
             if (category === 'all' || card.dataset.category === category) {
                 card.style.display = 'block';
+                visibleCount++;
             } else {
                 card.style.display = 'none';
             }
         });
+
+        // Update section visibility
+        updateSectionVisibility();
+        updateEmptyState(visibleCount);
+    }
+
+    // Update section visibility based on visible cards
+    function updateSectionVisibility() {
+        const sections = ['kiloan-section', 'satuan-section', 'khusus-section'];
+        
+        sections.forEach(sectionClass => {
+            const section = document.querySelector(`.${sectionClass}`);
+            if (section) {
+                const visibleCards = section.querySelectorAll('.service-card[style="block"], .service-card:not([style])');
+                if (visibleCards.length > 0) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Check and update empty state
+    function checkEmptyState() {
+        const serviceCards = document.querySelectorAll('.service-card');
+        const visibleCards = Array.from(serviceCards).filter(card => 
+            card.style.display !== 'none' && card.offsetParent !== null
+        );
+        updateEmptyState(visibleCards.length);
+    }
+
+    function updateEmptyState(visibleCount) {
+        const emptyState = document.getElementById('emptyState');
+        const servicesGrid = document.getElementById('servicesGrid');
+
+        if (emptyState && servicesGrid) {
+            if (visibleCount === 0) {
+                servicesGrid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                servicesGrid.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+            }
+        }
     }
 
     // Edit service from detail modal

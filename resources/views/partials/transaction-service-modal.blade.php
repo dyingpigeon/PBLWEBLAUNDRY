@@ -49,7 +49,7 @@
                             <h4 class="font-semibold text-gray-800 text-lg mb-1">Laundry Satuan</h4>
                             <p class="text-gray-600 mb-2">Cuci per item (per pieces)</p>
                             <div class="text-sm text-gray-500">
-                                <i class="fas fa-check text-green-500 mr-1"></i> Cocok untuk item khusus
+                                <i class="fas fa-check text-green-500 mr-1"></i> Pilih dari semua item tersedia
                             </div>
                         </div>
                         <i class="fas fa-chevron-right text-gray-400 text-xl"></i>
@@ -68,21 +68,8 @@ function selectOrderType(type) {
     if (type === 'kiloan') {
         showKiloanModal();
     } else {
-        showSatuanModal();
+        // LANGSUNG ke items satuan tanpa melalui kategori
+        showSatuanItemsModal();
     }
-}
-
-// Show kiloan modal
-function showKiloanModal() {
-    closeAllModals();
-    document.getElementById('kiloanModal').classList.remove('hidden');
-    loadKiloanServices();
-}
-
-// Show satuan modal  
-function showSatuanModal() {
-    closeAllModals();
-    document.getElementById('satuanModal').classList.remove('hidden');
-    loadCategories();
 }
 </script>

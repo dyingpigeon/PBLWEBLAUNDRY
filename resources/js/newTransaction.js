@@ -1,4 +1,4 @@
-// newTransaction.js - UPDATED FOR KILOAN/SATUAN FLOW
+// newTransaction.js - UPDATED FOR KILOAN/SATUAN FLOW (SKIP KATEGORI)
 // Handle wizard pembuatan transaksi baru
 
 let currentStep = 0;
@@ -13,8 +13,11 @@ let transactionData = {
     total: 0,
     payment_type: "later", // 'now' or 'later'
     payment_method: null,
-    selected_category: null,
 };
+
+// Global variables untuk items satuan
+let allSatuanItems = [];
+let filteredSatuanItems = [];
 
 // Helper function untuk get CSRF token - SESUAI DENGAN LAYOUT
 function getCsrfToken() {
@@ -38,7 +41,6 @@ function startNewTransaction() {
         total: 0,
         payment_type: "later",
         payment_method: null,
-        selected_category: null,
     };
 
     // Reset form fields
@@ -82,27 +84,19 @@ function showKiloanModal() {
     loadKiloanServices();
 }
 
-// Show satuan category modal
-function showSatuanModal() {
-    closeAllModals();
-    document.getElementById("satuanModal").classList.remove("hidden");
-    updateStepIndicator(2);
-    loadCategories();
-}
-
-// Show satuan items modal
-function showSatuanItemsModal(category) {
+// Show satuan items modal (LANGSUNG tanpa kategori)
+function showSatuanItemsModal() {
     closeAllModals();
     document.getElementById("satuanItemsModal").classList.remove("hidden");
-    updateStepIndicator(3);
-    loadCategoryItems(category.id);
+    updateStepIndicator(2);
+    loadAllSatuanItems();
 }
 
 // Show payment modal
 function showPaymentModal() {
     closeAllModals();
     document.getElementById("paymentModal").classList.remove("hidden");
-    updateStepIndicator(4);
+    updateStepIndicator(3);
     updatePaymentSummary();
 }
 
@@ -110,11 +104,10 @@ function showPaymentModal() {
 function showReviewModal() {
     closeAllModals();
     document.getElementById("reviewModal").classList.remove("hidden");
-    updateStepIndicator(5);
+    updateStepIndicator(4);
     updateReviewSummary();
 }
 
-// Show success modal
 // Show success modal
 function showSuccessModal() {
     closeAllModals();
@@ -127,7 +120,7 @@ function showSuccessModal() {
     document.getElementById("successCustomer").textContent =
         transactionData.customer.name;
 
-    // PERBAIKAN: Handle service name yang mungkin null untuk satuan
+    // Handle service name yang mungkin null untuk satuan
     let serviceText = "Laundry Satuan"; // Default untuk satuan
 
     if (transactionData.service && transactionData.service.name) {
@@ -151,7 +144,6 @@ function closeAllModals() {
         "customerModal",
         "serviceModal",
         "kiloanModal",
-        "satuanModal",
         "satuanItemsModal",
         "paymentModal",
         "reviewModal",
@@ -335,7 +327,8 @@ function selectOrderType(type) {
     if (type === "kiloan") {
         showKiloanModal();
     } else {
-        showSatuanModal();
+        // LANGSUNG ke items satuan tanpa melalui kategori
+        showSatuanItemsModal();
     }
 }
 
@@ -350,9 +343,9 @@ function backToKiloanModal() {
     showKiloanModal();
 }
 
-function backToSatuanModal() {
+function backToSatuanItemsModal() {
     closeAllModals();
-    showSatuanModal();
+    showSatuanItemsModal();
 }
 
 // ===== KILOAN FUNCTIONS =====
@@ -409,7 +402,6 @@ function loadKiloanServices() {
                                 ? service.items[0].price
                                 : 0;
 
-                        // PERBAIKAN: Gunakan fungsi wrapper untuk menghindari JSON parsing error
                         const serviceJson = JSON.stringify(service).replace(
                             /"/g,
                             "&quot;"
@@ -522,110 +514,19 @@ function calculateKiloanTotal() {
 
 // ===== SATUAN FUNCTIONS =====
 
-// Load categories untuk satuan
-function loadCategories() {
-    const container = document.getElementById("categoriesGrid");
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="col-span-2 text-center py-8">
-            <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-            <p class="text-gray-500 mt-2">Memuat kategori...</p>
-        </div>
-    `;
-
-    fetch("/api/transactions/categories", {
-        method: "GET",
-        headers: {
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRF-TOKEN": getCsrfToken(),
-        },
-    })
-        .then((response) => {
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                return response.text().then((text) => {
-                    throw new Error(
-                        `Server returned HTML instead of JSON. Status: ${response.status}`
-                    );
-                });
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.success) {
-                const categories = data.data;
-
-                container.innerHTML = categories
-                    .map((category) => {
-                        // PERBAIKAN: Gunakan fungsi wrapper untuk menghindari JSON parsing error
-                        const categoryJson = JSON.stringify(category).replace(
-                            /"/g,
-                            "&quot;"
-                        );
-
-                        return `
-                <div class="category-card bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-blue-500 cursor-pointer text-center"
-                     onclick="selectCategorySafe('${categoryJson}')">
-                    <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i class="${
-                            category.icon || "fas fa-tshirt"
-                        } text-white text-xl"></i>
-                    </div>
-                    <h4 class="font-semibold text-gray-800 mb-1">${
-                        category.name
-                    }</h4>
-                    <p class="text-xs text-gray-500">Pilih item ${category.name.toLowerCase()}</p>
-                </div>
-            `;
-                    })
-                    .join("");
-            } else {
-                throw new Error(data.message || "Unknown error");
-            }
-        })
-        .catch((error) => {
-            console.error("Error loading categories:", error);
-            container.innerHTML = `
-            <div class="col-span-2 text-center py-8">
-                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-                <p class="text-red-500 mt-2">Gagal memuat kategori</p>
-            </div>
-        `;
-        });
-}
-
-// Fungsi aman untuk memilih kategori
-function selectCategorySafe(categoryJson) {
-    try {
-        const category = JSON.parse(categoryJson.replace(/&quot;/g, '"'));
-        selectCategory(category);
-    } catch (error) {
-        console.error("Error parsing category JSON:", error);
-        alert("Terjadi kesalahan saat memilih kategori");
-    }
-}
-
-// Select category untuk satuan
-function selectCategory(category) {
-    transactionData.selected_category = category;
-    showSatuanItemsModal(category);
-}
-
-// Load category items untuk satuan
-function loadCategoryItems(categoryId) {
+// Load semua items satuan (tanpa kategori)
+function loadAllSatuanItems() {
     const container = document.getElementById("satuanItemsContainer");
     if (!container) return;
 
     container.innerHTML = `
         <div class="text-center py-8">
             <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-            <p class="text-gray-500 mt-2">Memuat items...</p>
+            <p class="text-gray-500 mt-2">Memuat semua items satuan...</p>
         </div>
     `;
 
-    fetch(`/api/transactions/categories/${categoryId}/items`, {
+    fetch("/api/transactions/satuan-items", {
         method: "GET",
         headers: {
             Accept: "application/json",
@@ -646,86 +547,98 @@ function loadCategoryItems(categoryId) {
         })
         .then((data) => {
             if (data.success) {
-                const items = data.data;
-
-                if (items.length === 0) {
-                    container.innerHTML = `
-                    <div class="text-center py-8">
-                        <i class="fas fa-box-open text-gray-400 text-2xl"></i>
-                        <p class="text-gray-500 mt-2">Tidak ada items dalam kategori ini</p>
-                    </div>
-                `;
-                    return;
+                allSatuanItems = data.data;
+                filteredSatuanItems = [...allSatuanItems];
+                renderSatuanItems();
+                
+                // Auto-select service default untuk satuan
+                if (allSatuanItems.length > 0 && allSatuanItems[0].service) {
+                    transactionData.service = allSatuanItems[0].service;
                 }
-
-                // Set service untuk satuan (gunakan service dari item pertama)
-                if (items.length > 0 && items[0].service) {
-                    transactionData.service = items[0].service;
-                }
-
-                container.innerHTML = items
-                    .map(
-                        (item) => `
-                <div class="item-card bg-white border border-gray-200 rounded-xl p-4 mb-3">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gray-800">${
-                                item.name
-                            }</h4>
-                            <p class="text-sm text-gray-500">Rp ${formatPrice(
-                                item.price
-                            )} / ${item.unit}</p>
-                            ${
-                                item.description
-                                    ? `<p class="text-xs text-gray-400">${item.description}</p>`
-                                    : ""
-                            }
-                        </div>
-                        <span class="text-lg font-bold text-blue-600 item-total" id="itemTotal-${
-                            item.id
-                        }">Rp 0</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <button onclick="decreaseSatuanItemQuantity(${
-                                item.id
-                            })" 
-                                    class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
-                                <i class="fas fa-minus text-gray-600 text-xs"></i>
-                            </button>
-                            <span id="itemQty-${
-                                item.id
-                            }" class="font-semibold w-8 text-center">0</span>
-                            <button onclick="increaseSatuanItemQuantity(${
-                                item.id
-                            })" 
-                                    class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
-                                <i class="fas fa-plus text-gray-600 text-xs"></i>
-                            </button>
-                        </div>
-                        <span class="text-sm text-gray-500">${item.unit}</span>
-                    </div>
-                </div>
-            `
-                    )
-                    .join("");
-
-                // Reset items data
-                transactionData.items = [];
-                updateSatuanTotal();
             } else {
-                throw new Error(data.message || "Unknown error");
+                throw new Error(data.message);
             }
         })
         .catch((error) => {
-            console.error("Error loading category items:", error);
+            console.error("Error loading satuan items:", error);
             container.innerHTML = `
             <div class="text-center py-8">
                 <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-                <p class="text-red-500 mt-2">Gagal memuat items</p>
+                <p class="text-red-500 mt-2">Gagal memuat items satuan</p>
+                <p class="text-xs text-red-400 mt-1">${error.message}</p>
             </div>
         `;
         });
+}
+
+// Render items ke container
+function renderSatuanItems() {
+    const container = document.getElementById("satuanItemsContainer");
+    
+    if (filteredSatuanItems.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-box-open text-gray-400 text-2xl"></i>
+                <p class="text-gray-500 mt-2">Tidak ada items yang cocok</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredSatuanItems.map(item => {
+        const currentQty = getCurrentItemQuantity(item.id);
+        
+        return `
+        <div class="item-card bg-white border border-gray-200 rounded-xl p-4 mb-3">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex-1">
+                    <h4 class="font-semibold text-gray-800">${item.name}</h4>
+                    <p class="text-sm text-gray-500">Rp ${formatPrice(item.price)} / ${item.unit}</p>
+                    ${item.description ? `<p class="text-xs text-gray-400 mt-1">${item.description}</p>` : ''}
+                    ${item.category_name ? `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full mt-1">${item.category_name}</span>` : ''}
+                </div>
+                <span class="text-lg font-bold text-blue-600 item-total" id="itemTotal-${item.id}">
+                    Rp ${formatPrice(currentQty * item.price)}
+                </span>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <button onclick="decreaseSatuanItemQuantity(${item.id})" 
+                            class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+                        <i class="fas fa-minus text-gray-600 text-xs"></i>
+                    </button>
+                    <span id="itemQty-${item.id}" class="font-semibold w-8 text-center">${currentQty}</span>
+                    <button onclick="increaseSatuanItemQuantity(${item.id})" 
+                            class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+                        <i class="fas fa-plus text-gray-600 text-xs"></i>
+                    </button>
+                </div>
+                <span class="text-sm text-gray-500">${item.unit}</span>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// Filter items berdasarkan search
+function filterSatuanItems(searchTerm) {
+    if (!searchTerm) {
+        filteredSatuanItems = [...allSatuanItems];
+    } else {
+        const term = searchTerm.toLowerCase();
+        filteredSatuanItems = allSatuanItems.filter(item => 
+            item.name.toLowerCase().includes(term) ||
+            (item.description && item.description.toLowerCase().includes(term)) ||
+            (item.category_name && item.category_name.toLowerCase().includes(term))
+        );
+    }
+    renderSatuanItems();
+}
+
+// Get current quantity dari transactionData
+function getCurrentItemQuantity(itemId) {
+    const existingItem = transactionData.items.find(i => i.service_item_id == itemId);
+    return existingItem ? existingItem.quantity : 0;
 }
 
 // Item quantity functions untuk satuan
@@ -752,18 +665,10 @@ function decreaseSatuanItemQuantity(itemId) {
 }
 
 function updateSatuanItemCalculation(itemId, quantity) {
-    // Get item price from displayed elements
-    const itemElement = document
-        .querySelector(`[onclick*="increaseSatuanItemQuantity(${itemId})"]`)
-        .closest(".item-card");
-    const priceText = itemElement.querySelector(
-        "p.text-sm.text-gray-500"
-    ).textContent;
-    const price = parseInt(
-        priceText.replace("Rp ", "").replace(/\./g, "").split(" /")[0]
-    );
+    const item = allSatuanItems.find(i => i.id == itemId);
+    if (!item) return;
 
-    const subtotal = quantity * price;
+    const subtotal = quantity * item.price;
 
     // Update item total display
     const itemTotalElement = document.getElementById(`itemTotal-${itemId}`);
@@ -772,9 +677,7 @@ function updateSatuanItemCalculation(itemId, quantity) {
     }
 
     // Update transaction data
-    const existingIndex = transactionData.items.findIndex(
-        (i) => i.service_item_id == itemId
-    );
+    const existingIndex = transactionData.items.findIndex(i => i.service_item_id == itemId);
 
     if (quantity > 0) {
         if (existingIndex >= 0) {
@@ -783,32 +686,25 @@ function updateSatuanItemCalculation(itemId, quantity) {
         } else {
             transactionData.items.push({
                 service_item_id: itemId,
-                item_name: itemElement.querySelector("h4").textContent,
+                item_name: item.name,
                 quantity: quantity,
-                unit_price: price,
+                unit_price: item.price,
                 subtotal: subtotal,
-                unit: "pcs",
+                unit: item.unit
             });
         }
     } else {
-        transactionData.items = transactionData.items.filter(
-            (i) => i.service_item_id != itemId
-        );
+        transactionData.items = transactionData.items.filter(i => i.service_item_id != itemId);
     }
 
     updateSatuanTotal();
 }
 
 function updateSatuanTotal() {
-    transactionData.total = transactionData.items.reduce(
-        (sum, item) => sum + item.subtotal,
-        0
-    );
+    transactionData.total = transactionData.items.reduce((sum, item) => sum + item.subtotal, 0);
     const itemsTotalElement = document.getElementById("satuanItemsTotal");
     if (itemsTotalElement) {
-        itemsTotalElement.textContent = `Rp ${formatPrice(
-            transactionData.total
-        )}`;
+        itemsTotalElement.textContent = `Rp ${formatPrice(transactionData.total)}`;
     }
 }
 
@@ -876,7 +772,7 @@ function resetPaymentSelections() {
 
     // Select "Bayar Nanti" by default
     const laterCard = document.querySelector(
-        "[onclick=\"selectPaymentType('later')\"]"
+        '[onclick="selectPaymentType(\'later\')"]'
     );
     if (laterCard) {
         laterCard.classList.add("border-yellow-500", "bg-yellow-50");
@@ -955,6 +851,15 @@ function selectPaymentMethod(method) {
                 selectedCard.classList.add("border-purple-500", "bg-purple-50");
                 break;
         }
+    }
+}
+
+// Back navigation untuk payment modal
+function backToPreviousStep() {
+    if (transactionData.order_type === "kiloan") {
+        backToKiloanModal();
+    } else {
+        backToSatuanItemsModal();
     }
 }
 
@@ -1083,9 +988,6 @@ function updateReviewSummary() {
 // ===== TRANSACTION SUBMISSION =====
 
 // Submit transaction to backend
-// ===== TRANSACTION SUBMISSION =====
-
-// Submit transaction to backend
 async function submitTransaction() {
     try {
         // Validasi data sebelum submit
@@ -1118,13 +1020,13 @@ async function submitTransaction() {
             return;
         }
 
-        // Prepare payload - service_id hanya untuk kiloan, untuk satuan bisa kosong
+        // Prepare payload
         const payload = {
             customer_id: transactionData.customer.id,
             service_id:
                 transactionData.order_type === "kiloan"
                     ? transactionData.service.id
-                    : null, // Bisa null untuk satuan
+                    : null,
             order_type: transactionData.order_type,
             items:
                 transactionData.order_type === "kiloan"
@@ -1242,6 +1144,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (customerSearch) {
         customerSearch.addEventListener("input", function (e) {
             filterCustomers(e.target.value);
+        });
+    }
+
+    // Satuan items search
+    const satuanItemsSearch = document.getElementById("satuanItemsSearch");
+    if (satuanItemsSearch) {
+        satuanItemsSearch.addEventListener("input", function (e) {
+            filterSatuanItems(e.target.value);
         });
     }
 

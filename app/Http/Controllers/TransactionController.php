@@ -714,11 +714,11 @@ class TransactionController extends Controller
             Log::debug('TransactionController@store: Mencari service default untuk satuan');
             // Cari service default untuk satuan
             $defaultService = DB::selectOne("
-                SELECT id FROM services 
-                WHERE type = 'satuan' AND active = 1 
-                ORDER BY id ASC 
-                LIMIT 1
-            ");
+            SELECT id FROM services 
+            WHERE type = 'satuan' AND active = 1 
+            ORDER BY id ASC 
+            LIMIT 1
+        ");
 
             if ($defaultService) {
                 $serviceId = $defaultService->id;
@@ -769,6 +769,24 @@ class TransactionController extends Controller
             'service_type' => $service->type
         ]);
 
+        // Tentukan payment status berdasarkan payment type
+        $paymentStatus = 'pending';
+        if ($validated['payment_type'] === 'now') {
+            $paymentStatus = 'paid';
+            Log::debug('TransactionController@store: Payment status di-set ke paid (bayar sekarang)');
+        } else {
+            Log::debug('TransactionController@store: Payment status di-set ke pending (bayar nanti)');
+        }
+
+        // Validasi payment method untuk bayar sekarang
+        if ($validated['payment_type'] === 'now' && empty($validated['payment_method'])) {
+            Log::warning('TransactionController@store: Metode pembayaran diperlukan untuk bayar sekarang');
+            return response()->json([
+                'success' => false,
+                'message' => 'Metode pembayaran harus dipilih untuk pembayaran sekarang'
+            ], 400);
+        }
+
         DB::beginTransaction();
         Log::debug('TransactionController@store: Memulai database transaction');
 
@@ -776,10 +794,10 @@ class TransactionController extends Controller
             // Generate transaction number
             $today = now()->format('Ymd');
             $todayCount = DB::selectOne("
-                SELECT COUNT(*) as count 
-                FROM transactions 
-                WHERE DATE(created_at) = CURDATE()
-            ")->count + 1;
+            SELECT COUNT(*) as count 
+            FROM transactions 
+            WHERE DATE(created_at) = CURDATE()
+        ")->count + 1;
 
             $transactionNumber = 'TRX-' . $today . '-' . str_pad($todayCount, 4, '0', STR_PAD_LEFT);
             Log::debug('TransactionController@store: Generated transaction number', [
@@ -788,15 +806,17 @@ class TransactionController extends Controller
             ]);
 
             // Create transaction
-            Log::debug('TransactionController@store: Menyimpan transaction ke database');
+            Log::debug('TransactionController@store: Menyimpan transaction ke database', [
+                'payment_status' => $paymentStatus
+            ]);
             DB::insert("
-                INSERT INTO transactions (
-                    transaction_number, customer_id, service_id, order_type, total_amount, 
-                    weight, payment_type, payment_method, notes,
-                    status, payment_status, order_date, estimated_completion,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pending', NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY), NOW(), NOW())
-            ", [
+            INSERT INTO transactions (
+                transaction_number, customer_id, service_id, order_type, total_amount, 
+                weight, payment_type, payment_method, notes,
+                status, payment_status, order_date, estimated_completion,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY), NOW(), NOW())
+        ", [
                 $transactionNumber,
                 $validated['customer_id'],
                 $serviceId, // Gunakan serviceId yang sudah diproses
@@ -805,14 +825,16 @@ class TransactionController extends Controller
                 $validated['weight'] ?? null,
                 $validated['payment_type'],
                 $validated['payment_method'] ?? null,
-                $validated['notes'] ?? null
+                $validated['notes'] ?? null,
+                $paymentStatus // Gunakan payment status yang sudah ditentukan
             ]);
 
             // Get the last inserted transaction ID
             $transactionId = DB::getPdo()->lastInsertId();
             Log::debug('TransactionController@store: Transaction berhasil dibuat', [
                 'transaction_id' => $transactionId,
-                'transaction_number' => $transactionNumber
+                'transaction_number' => $transactionNumber,
+                'payment_status' => $paymentStatus
             ]);
 
             // Create transaction items
@@ -821,8 +843,8 @@ class TransactionController extends Controller
             foreach ($validated['items'] as $item) {
                 // Get service item details from database
                 $serviceItem = DB::selectOne("
-                    SELECT name, unit FROM service_items WHERE id = ?
-                ", [$item['service_item_id']]);
+                SELECT name, unit FROM service_items WHERE id = ?
+            ", [$item['service_item_id']]);
 
                 $itemName = $serviceItem ? $serviceItem->name : 'Unknown Item';
                 $unit = $serviceItem ? $serviceItem->unit : ($validated['order_type'] === 'kiloan' ? 'kg' : 'pcs');
@@ -836,11 +858,11 @@ class TransactionController extends Controller
                 ]);
 
                 DB::insert("
-                    INSERT INTO transaction_items (
-                        transaction_id, service_item_id, item_name, quantity, unit_price, subtotal, unit,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                ", [
+                INSERT INTO transaction_items (
+                    transaction_id, service_item_id, item_name, quantity, unit_price, subtotal, unit,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ", [
                     $transactionId,
                     $item['service_item_id'],
                     $itemName,
@@ -870,7 +892,8 @@ class TransactionController extends Controller
                     'message' => 'Transaksi berhasil dibuat!',
                     'data' => [
                         'transaction_number' => $transactionNumber,
-                        'transaction_id' => $transactionId
+                        'transaction_id' => $transactionId,
+                        'payment_status' => $paymentStatus
                     ]
                 ]);
             }
@@ -898,6 +921,86 @@ class TransactionController extends Controller
             }
 
             return redirect()->back()->with('error', 'Gagal membuat transaksi: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    // Tambahkan method ini ke TransactionController
+
+    /**
+     * Get all satuan items (untuk modal satuan tanpa kategori)
+     */
+    public function getSatuanItems(Request $request)
+    {
+        Log::debug('TransactionController@getSatuanItems: Memulai proses mengambil semua items satuan');
+
+        try {
+            // Query yang disesuaikan dengan struktur database baru
+            $query = "
+        SELECT 
+            si.id,
+            si.name,
+            si.description,
+            si.price,
+            si.unit,
+            si.service_id,
+            si.estimation_time,
+            si.active,
+            si.created_at,
+            si.updated_at,
+            s.name as service_name,
+            s.description as service_description,
+            s.type as service_type,
+            s.icon as service_icon,
+            s.color as service_color
+        FROM service_items si
+        LEFT JOIN services s ON si.service_id = s.id
+        WHERE si.active = 1
+        AND s.active = 1
+        AND s.type = 'satuan'
+        ORDER BY si.name ASC
+        ";
+
+            Log::debug('TransactionController@getSatuanItems: Menjalankan query semua items satuan');
+            $items = DB::select($query);
+
+            // Format data untuk response
+            $formattedItems = array_map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'description' => $item->description,
+                    'price' => (float) $item->price,
+                    'unit' => $item->unit,
+                    'service_id' => $item->service_id,
+                    'estimation_time' => $item->estimation_time,
+                    'active' => (bool) $item->active,
+                    'service_name' => $item->service_name,
+                    'service_description' => $item->service_description,
+                    'service_type' => $item->service_type,
+                    'service_icon' => $item->service_icon,
+                    'service_color' => $item->service_color,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at
+                ];
+            }, $items);
+
+            Log::debug('TransactionController@getSatuanItems: Semua items satuan berhasil diambil', [
+                'items_count' => count($formattedItems)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedItems
+            ]);
+        } catch (\Exception $e) {
+            Log::error('TransactionController@getSatuanItems: Gagal memuat items satuan', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat items satuan: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
